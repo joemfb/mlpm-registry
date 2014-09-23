@@ -15,12 +15,12 @@ function ext:get(
 {
   map:put($context, "output-types", "application/json"),
   let $package := map:get($params, "package")
-  let $docs := mlpm:find($package, ())
+  let $mlpm := mlpm:find($package)
   return
-    if (fn:exists($docs))
+    if (fn:exists($mlpm))
     then (
       xdmp:set-response-code(200, "OK"),
-      document { xdmp:to-json( mlpm:info($docs) ) }
+      document { xdmp:to-json( mlpm:to-json($mlpm) ) }
     )
     else (
       xdmp:set-response-code(404, "Not Found"),

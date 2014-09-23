@@ -16,7 +16,7 @@ function ext:get(
   map:put($context, "output-types", "application/json"),
   let $package := map:get($params, "package")
   let $version := map:get($params, "version")
-  let $mlpm := mlpm:find($package, $version)
+  let $mlpm := mlpm:find-version($package, $version)
   return
     if (fn:exists($mlpm))
     then (

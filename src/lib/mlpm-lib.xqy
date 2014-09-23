@@ -6,20 +6,26 @@ import module namespace json="http://marklogic.com/xdmp/json" at "/MarkLogic/jso
 
 declare option xdmp:mapping "false";
 
-declare function mlpm:to-json($xml as element(mlpm:mlpm)) as json:object
+declare function mlpm:to-json($xml as element()) as json:object
 {
-  let $json := json:transform-to-json($xml, json:config("custom"))
-  return map:get(xdmp:from-json($json), "mlpm")
+  let $conf :=
+    map:new((
+      json:config("custom"),
+      map:entry("array-element-names", xs:QName("mlpm:versions"))))
+  let $json :=
+    xdmp:from-json(
+      json:transform-to-json($xml, $conf))
+  return map:get($json, map:keys($json)[1])
 };
 
-declare function mlpm:to-xml($json as json:object?) as element(mlpm:mlpm)
+declare function mlpm:to-xml($json) as element()+
 {
   let $conf :=
     map:new((
       json:config("custom"),
       map:entry("element-namespace-prefix", "mlpm"),
       map:entry("element-namespace", "http://mlpm.org/ns")))
-  return element mlpm:mlpm { json:transform-from-json($json, $conf) }
+  return json:transform-from-json($json, $conf)
 };
 
 declare function mlpm:json-exclude($obj as json:object, $exclude as xs:string*) as json:object
@@ -32,19 +38,27 @@ declare function mlpm:json-exclude($obj as json:object, $exclude as xs:string*) 
   return $new-obj
 };
 
-declare function mlpm:find($package as xs:string, $version as xs:string?) as element(mlpm:mlpm)*
+declare function mlpm:find($package as xs:string) as element(mlpm:package)?
 {
-  let $version-query := cts:element-value-query(xs:QName("mlpm:version"), $version)[$version]
-  return
-    for $x in
-      cts:search(/mlpm:mlpm,
-        cts:and-query(($version-query,
-          cts:element-value-query(xs:QName("mlpm:name"), $package))))
-    order by xs:dateTime($x/mlpm:created) descending
-    return $x
+  cts:search(/mlpm:package, cts:element-value-query(xs:QName("mlpm:name"), $package))
 };
 
-declare function mlpm:resolve($mlpm as element(mlpm:mlpm)) as map:map
+declare function mlpm:find-version($package as xs:string, $version as xs:string?) as element(mlpm:package-version)?
+{
+  if ($version)
+  then
+    cts:search(/mlpm:package-version,
+      cts:and-query((
+        cts:element-value-query(xs:QName("mlpm:name"), $package),
+        cts:element-value-query(xs:QName("mlpm:version"), $version))))
+  else (
+    for $x in cts:search(/mlpm:package-version, cts:element-value-query(xs:QName("mlpm:name"), $package))
+    order by xs:dateTime($x/mlpm:created) descending
+    return $x
+  )[1]
+};
+
+declare function mlpm:resolve($mlpm as element(mlpm:package-version)) as map:map
 {
   let $package := $mlpm/mlpm:name/fn:string()
   let $version := $mlpm/mlpm:version/fn:string()
@@ -57,7 +71,7 @@ declare function mlpm:resolve($mlpm as element(mlpm:mlpm)) as map:map
       let $arr :=
         json:to-array((
           for $dep in $mlpm/mlpm:dependencies/*
-          return mlpm:resolve(mlpm:find(fn:local-name($dep), $dep/fn:string()))))
+          return mlpm:resolve(mlpm:find-version(fn:local-name($dep), $dep/fn:string()))))
       return
         if (json:array-size($arr) gt 0)
         then map:entry("dependencies", $arr)
@@ -66,16 +80,16 @@ declare function mlpm:resolve($mlpm as element(mlpm:mlpm)) as map:map
   ))
 };
 
-declare function mlpm:get-archive($mlpm as element(mlpm:mlpm)) as document-node()
+declare function mlpm:get-archive($mlpm as element(mlpm:package-version)) as document-node()
 {
   let $package := $mlpm/mlpm:name/fn:string()
-  let $dir := mlpm:dir($package, $mlpm/mlpm:version/fn:string())
+  let $dir := mlpm:version-dir($package, $mlpm/mlpm:version/fn:string())
   return fn:doc($dir || $package || ".zip")
 };
 
-declare function mlpm:dir($package as xs:string, $version as xs:string) as xs:string
+declare function mlpm:version-dir($package as xs:string, $version as xs:string) as xs:string
 {
-  fn:string-join(("/packages", $package, $version), "/") || "/"
+  fn:string-join(("/packages", $package, "versions", $version), "/") || "/"
 };
 
 declare function mlpm:publish(
@@ -84,33 +98,53 @@ declare function mlpm:publish(
   $package as xs:string,
   $version as xs:string
 ) {
-  let $dir := mlpm:dir($package, $version)
+  let $dir := mlpm:version-dir($package, $version)
   return
     if (xdmp:exists(xdmp:directory($dir)))
     then fn:error(xs:QName("VERSION-EXISTS"), ($package, $version))
     else (
+      (: TODO: update /mlpm:package :)
       map:put($mlpm, "created", fn:current-dateTime()),
       xdmp:document-insert($dir || $package || ".zip", $input),
-      xdmp:document-insert($dir || "mlpm.xml", mlpm:to-xml($mlpm))
+      xdmp:document-insert($dir || "mlpm.xml", element mlpm:package-version { mlpm:to-xml($mlpm) }),
+      mlpm:update-package($package, $version, $mlpm)
     )
 };
 
-declare function mlpm:info($docs as element(mlpm:mlpm)+) as json:object
+declare function mlpm:update-package($package, $version, $mlpm)
 {
-  let $mlpm := mlpm:to-json($docs[1])
-  let $result := mlpm:json-exclude($mlpm, "version")
-
-  let $versions := json:to-array($docs/mlpm:version/fn:string())
-  let $timestamps := $docs/mlpm:created/fn:string()
-  let $time := json:object()
-  let $created := json:object()
-  let $_ := (
-    for $doc in $docs
-    return map:put($created, $doc/mlpm:version/fn:string(), $doc/mlpm:created/fn:string()),
-    map:put($time, "created", $created),
-    map:put($time, "modified", $docs[1]/mlpm:created/fn:string()),
-    map:put($result, "time", $time),
-    map:put($result, "versions", $versions)
-  )
-  return $result
+  let $doc := mlpm:find($package)
+  return
+    if ($doc)
+    then
+      let $old := mlpm:to-json($doc)
+      let $mlpm :=
+        map:new((
+          mlpm:json-exclude($mlpm, "version"),
+          map:entry("versions", json:to-array((
+            json:array-values(map:get($old, "versions")),
+            $version
+          ))),
+          map:entry("time", map:new((
+            map:get($old, "time"),
+            map:entry("modified", fn:current-dateTime())
+          )))
+        ))
+      return
+        xdmp:document-insert(
+          $doc/fn:base-uri(.),
+          element mlpm:package { mlpm:to-xml($mlpm) })
+    else
+      let $mlpm :=
+        map:new((
+          mlpm:json-exclude($mlpm, "version"),
+          map:entry("versions", json:to-array($version)),
+          map:entry("time", map:new((
+            map:entry("created", fn:current-dateTime()),
+            map:entry("modified", fn:current-dateTime()))
+          ))))
+      return
+        xdmp:document-insert(
+          "/packages/" || $package || "/package.xml",
+          element mlpm:package { mlpm:to-xml($mlpm) })
 };

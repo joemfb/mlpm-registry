@@ -29,6 +29,7 @@ function ext:put(
         mlpm:publish($mlpm, $input, $package, $version)
       }
       catch($ex) {
+        xdmp:log($ex),
         xdmp:set-response-code(400, "Bad Request"),
         document { "Bad Request, already exists" }
       }
