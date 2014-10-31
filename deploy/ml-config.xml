@@ -219,6 +219,13 @@
           <range-value-positions>false</range-value-positions>
         </range-element-index>
 -->
+        <range-element-index>
+          <scalar-type>string</scalar-type>
+          <namespace-uri>http://mlpm.org/ns</namespace-uri>
+          <localname>name</localname>
+          <collation>http://marklogic.com/collation/</collation>
+          <range-value-positions>false</range-value-positions>
+        </range-element-index>
       </range-element-indexes>
       <range-element-attribute-indexes>
 <!--
@@ -409,6 +416,7 @@
       <role-name>@ml.app-role</role-name>
       <description>A role for users of the @ml.app-name application</description>
       <role-names>
+        <role-name>rest-reader</role-name>
       </role-names>
       <permissions>
         <permission>

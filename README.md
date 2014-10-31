@@ -1,8 +1,10 @@
 ##### mlpm-registry
 
-Registry for mlpm (a MarkLogic package manager)
+package registry for mlpm (a MarkLogic package manager)
 
 - Copyright (c) 2014 Joseph Bryan. All Rights Reserved.
+- Roxy: Copyright 2012 MarkLogic Corporation
+- UI (based on https://github.com/marklogic/slush-marklogic-node): Copyright 2012 MarkLogic Corporation
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
