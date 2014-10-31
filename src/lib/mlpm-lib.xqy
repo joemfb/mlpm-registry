@@ -43,7 +43,7 @@ declare function mlpm:find($package as xs:string) as element(mlpm:package)?
   cts:search(/mlpm:package, cts:element-value-query(xs:QName("mlpm:name"), $package))
 };
 
-declare function mlpm:find-version($package as xs:string, $version as xs:string?) as element(mlpm:package-version)?
+declare function mlpm:find-version($package as xs:string, $version as xs:string?) as element(mlpm:package-version)*
 {
   if ($version)
   then
@@ -53,29 +53,42 @@ declare function mlpm:find-version($package as xs:string, $version as xs:string?
         cts:element-value-query(xs:QName("mlpm:version"), $version))))
   else (
     for $x in cts:search(/mlpm:package-version, cts:element-value-query(xs:QName("mlpm:name"), $package))
-    order by xs:dateTime($x/mlpm:created) descending
+    order by $x/mlpm:created descending
     return $x
   )[1]
 };
 
 declare function mlpm:resolve($mlpm as element(mlpm:package-version)) as map:map
 {
+  mlpm:resolve($mlpm, "./mlpm_modules")
+};
+
+declare function mlpm:resolve(
+  $mlpm as element(mlpm:package-version),
+  $path as xs:string?
+) as map:map
+{
   let $package := $mlpm/mlpm:name/fn:string()
   let $version := $mlpm/mlpm:version/fn:string()
-  return
-  map:new((
+  return map:new((
     map:entry("package", $package),
     map:entry("version", $version),
+    map:entry("path", $path),
     if (fn:exists($mlpm/mlpm:dependencies/*))
     then
-      let $arr :=
-        json:to-array((
-          for $dep in $mlpm/mlpm:dependencies/*
-          return mlpm:resolve(mlpm:find-version(fn:local-name($dep), $dep/fn:string()))))
-      return
-        if (json:array-size($arr) gt 0)
-        then map:entry("dependencies", $arr)
-        else ()
+      let $deps := json:to-array((
+        for $dep in $mlpm/mlpm:dependencies/*
+        let $dep-mlpm := mlpm:find-version(fn:local-name($dep), $dep/fn:string())
+        let $dep-path := $path || "/" || $package || "/mlpm_modules"
+        (:
+          if (fn:matches($path, "/$"))
+          then
+          else
+        :)
+        return mlpm:resolve($dep-mlpm, $dep-path)
+      ))
+      where json:array-size($deps) gt 0
+      return map:entry("dependencies", $deps)
     else ()
   ))
 };
