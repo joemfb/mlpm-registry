@@ -19,11 +19,11 @@ function ext:get(
   return
     if (fn:exists($mlpm))
     then (
-      xdmp:set-response-code(200, "OK"),
+      map:put($context, "output-status", (200, "Ok")),
       document { xdmp:to-json( mlpm:to-json($mlpm) ) }
     )
     else (
-      xdmp:set-response-code(404, "Not Found"),
+      map:put($context, "output-status", (404, "Not Found")),
       document { "Not Found" }
     )
 };

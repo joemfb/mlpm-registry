@@ -20,13 +20,13 @@ function ext:get(
   return
     if (fn:exists($mlpm))
     then (
-      xdmp:set-response-code(200, "OK"),
+      map:put($context, "output-status", (200, "Ok")),
       map:put($context, "output-types", xdmp:uri-content-type($mlpm/fn:base-uri())),
       xdmp:add-response-header("Content-Disposition", "attachment;filename=" || $package || ".zip"),
       mlpm:get-archive($mlpm)
     )
     else (
-      xdmp:set-response-code(404, "Not Found"),
+      map:put($context, "output-status", (404, "Not Found")),
       document { "Not Found" }
     )
 };
