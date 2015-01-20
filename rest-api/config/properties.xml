@@ -3,6 +3,6 @@
   <validate-options>true</validate-options>
   <document-transform-out></document-transform-out>
   <debug>false</debug>
-  <error-format>xml</error-format>
+  <error-format>json</error-format>
   <validate-queries>false</validate-queries>
 </properties>

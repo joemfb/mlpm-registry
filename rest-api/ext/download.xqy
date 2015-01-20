@@ -13,17 +13,17 @@ function ext:get(
   $params  as map:map
 ) as document-node()*
 {
-  let $package := map:get($params, "package")
+  let $package-name := map:get($params, "package")
   let $version := map:get($params, "version")
 
-  let $mlpm := mlpm:find-version($package, $version)
+  let $package := mlpm:find-version($package-name, $version)
   return
-    if (fn:exists($mlpm))
+    if (fn:exists($package))
     then (
       map:put($context, "output-status", (200, "Ok")),
-      map:put($context, "output-types", xdmp:uri-content-type($mlpm/fn:base-uri())),
-      xdmp:add-response-header("Content-Disposition", "attachment;filename=" || $package || ".zip"),
-      mlpm:get-archive($mlpm)
+      map:put($context, "output-types", xdmp:uri-content-type($package/fn:base-uri())),
+      xdmp:add-response-header("Content-Disposition", "attachment;filename=" || $package-name || ".zip"),
+      mlpm:get-archive($package)
     )
     else (
       map:put($context, "output-status", (404, "Not Found")),

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<options xmlns="http://marklogic.com/appservices/search">
+  <searchable-expression xmlns:mlpm="http://mlpm.org/ns">/mlpm:package</searchable-expression>
+  <search-option>unfiltered</search-option>
+  <page-length>10</page-length>
+  <grammar>
+    <quotation>"</quotation>
+    <implicit>
+      <cts:and-query strength="20" xmlns:cts="http://marklogic.com/cts"/>
+    </implicit>
+    <starter strength="30" apply="grouping" delimiter=")">(</starter>
+    <starter strength="40" apply="prefix" element="cts:not-query">-</starter>
+    <joiner strength="10" apply="infix" element="cts:or-query" tokenize="word">OR</joiner>
+    <joiner strength="20" apply="infix" element="cts:and-query" tokenize="word">AND</joiner>
+    <joiner strength="30" apply="infix" element="cts:near-query" tokenize="word">NEAR</joiner>
+    <joiner strength="30" apply="near2" consume="2" element="cts:near-query">NEAR/</joiner>
+    <joiner strength="50" apply="constraint">:</joiner>
+    <joiner strength="50" apply="constraint" compare="LT" tokenize="word">LT</joiner>
+    <joiner strength="50" apply="constraint" compare="LE" tokenize="word">LE</joiner>
+    <joiner strength="50" apply="constraint" compare="GT" tokenize="word">GT</joiner>
+    <joiner strength="50" apply="constraint" compare="GE" tokenize="word">GE</joiner>
+    <joiner strength="50" apply="constraint" compare="NE" tokenize="word">NE</joiner>
+  </grammar>
+  <sort-order direction="descending">
+    <score/>
+  </sort-order>
+  <return-facets>0</return-facets>
+  <return-metrics>0</return-metrics>
+  <return-qtext>0</return-qtext>
+  <extract-metadata>
+    <qname elem-ns="http://mlpm.org/ns" elem-name="name"/>
+    <qname elem-ns="http://mlpm.org/ns" elem-name="description"/>
+    <qname elem-ns="http://mlpm.org/ns" elem-name="author"/>
+    <qname elem-ns="http://mlpm.org/ns" elem-name="modified"/>
+    <qname elem-ns="http://mlpm.org/ns" elem-name="version"/>
+  </extract-metadata>
+</options>

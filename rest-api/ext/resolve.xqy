@@ -14,14 +14,17 @@ function ext:get(
 ) as document-node()*
 {
   map:put($context, "output-types", "application/json"),
-  let $package := map:get($params, "package")
+
+  let $package-name := map:get($params, "package")
   let $version := map:get($params, "version")
-  let $mlpm := mlpm:find-version($package, $version)
+  let $package := mlpm:find-version($package-name, $version)
   return
-    if (fn:exists($mlpm))
+    if (fn:exists($package))
     then (
       map:put($context, "output-status", (200, "Ok")),
-      document { mlpm:resolve($mlpm) ! xdmp:to-json(.) }
+      document {
+       xdmp:to-json( mlpm:resolve($package) )
+      }
     )
     else (
       map:put($context, "output-status", (404, "Not Found")),
