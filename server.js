@@ -12,23 +12,8 @@ var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var expressSession = require('express-session');
 var http = require('http');
-
-function getAuth(options, session) {
-  'use strict';
-
-  var user = { name: null, password: null };
-
-  if ( session.user && session.user.username && session.user.password ) {
-    user.name = session.user.username;
-    user.password = session.user.password;
-  } else {
-    user.name = options.defaultUser;
-    user.password = options.defaultPass;
-  }
-
-  //TODO: return user object for more flexibility
-  return user.name + ':' + user.password;
-}
+var request = require('request');
+var url = require('url');
 
 exports.buildExpress = function(options) {
   'use strict';
@@ -39,53 +24,59 @@ exports.buildExpress = function(options) {
   app.use(cookieParser());
   // Change this secret to something unique to your application
   app.use(expressSession({
-    secret: '1234567890QWERTY',
+    secret: 'mkXb{1kA\\#4-vxnaA,r6s~v5Avv<$V$K',
     saveUninitialized: true,
     resave: true
   }));
-  app.use(bodyParser.json());
-  app.use(bodyParser.urlencoded({
-    extended: true
+  app.use(bodyParser.raw({
+    type: 'application/zip',
+    limit: '50mb'
   }));
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({ extended: true }));
 
-  // Generic proxy function used by multiple HTTP verbs
-  // TODO: rewrite using request so that streams can be piped
-  function proxy(req, res) {
-    var queryString = req.originalUrl.split('?')[1];
-    // console.log(req.method + ' ' + req.path + ' proxied to ' + options.mlHost + ':' + options.mlPort + req.path + (queryString ? '?' + queryString : ''));
-    var mlReq = http.request({
-      hostname: options.mlHost,
-      port: options.mlPort,
-      method: req.method,
-      path: req.path + (queryString ? '?' + queryString : ''),
-      headers: req.headers,
-      auth: getAuth(options, req.session)
-    }, function(response) {
-      // some requests (POST /v1/documents) return a location header. Make sure
-      // that gets back to the client.
-      if (response.headers.location) {
-        res.header('location', response.headers.location);
-      }
+  function getAuth(session) {
+    var auth = { sendImmediately: false };
 
-      res.statusCode = response.statusCode;
-
-      response.on('data', function(chunk) {
-        res.write(chunk);
-      });
-      response.on('end', function() {
-        res.end();
-      });
-    });
-
-    if (req.body !== undefined) {
-      mlReq.write(JSON.stringify(req.body));
-      mlReq.end();
+    if ( session.user && session.user.username && session.user.password ) {
+      auth.user = session.user.username;
+      auth.pass = session.user.password;
+    } else {
+      auth.user = options.defaultUser;
+      auth.pass = options.defaultPass;
     }
 
-    mlReq.on('error', function(e) {
-      console.log('Problem with request: ' + e.message);
-      res.status(500).send(e);
-    });
+    return auth;
+  }
+
+  function proxyConfig(req) {
+    return {
+      url: url.format({
+        protocol: 'http:',
+        port: options.mlPort,
+        hostname: options.mlHost,
+        pathname: req.path
+      }),
+      method: req.method,
+      headers: req.headers,
+      qs: req.query,
+      auth: getAuth(req.session)
+    };
+  }
+
+  // Generic proxy function used by multiple HTTP verbs
+  function proxy(req) {
+    var config = proxyConfig(req);
+
+    if (req.body !== undefined) {
+      if ( req.headers['content-type'] === 'application/zip' ) {
+        config.body = req.body;
+      } else {
+        config.body = JSON.stringify(req.body);
+      }
+    }
+
+    return req.pipe( request(config) );
   }
 
 
@@ -163,12 +154,28 @@ exports.buildExpress = function(options) {
     res.send();
   });
 
+  // optional basic auth, for cmd-line client
+  app.put('/v1/resources/publish', function(req, res) {
+    var auth64, credentials, index;
+    if ( !req.session.user ) {
+      auth64 = req.headers.authorization.split(' ')[1];
+      credentials = new Buffer(auth64, 'base64').toString();
+      index = credentials.indexOf(':');
+      req.session.user = {
+        username: credentials.slice(0, index),
+        password: credentials.slice(index + 1)
+      };
+    }
+
+    proxy(req).pipe(res);
+  });
+
   // ==================================
   // MarkLogic REST API endpoints
   // ==================================
   // For any other GET request, proxy it on to MarkLogic.
   app.get('/v1*', function(req, res) {
-    proxy(req, res);
+    proxy(req).pipe(res);
 
     // To require authentication before getting to see data, use this:
     // if (req.session.user === undefined) {
@@ -196,18 +203,18 @@ exports.buildExpress = function(options) {
       if (req.path === '/v1/documents' && req.query.uri.match('/users/')) {
         // TODO: The user is updating the profile. Update the session info.
       }
-      proxy(req, res);
+      proxy(req).pipe(res);
     }
   });
 
   app.post('/v1*', function(req, res) {
-    proxy(req, res);
+    proxy(req).pipe(res);
 
     // Require authentication for POST requests
     // if (req.session.user === undefined) {
     //   res.send(401, 'Unauthorized');
     // } else {
-    //   proxy(req, res);
+    //   proxy(req).pipe(res);
     // }
   });
 
@@ -216,7 +223,7 @@ exports.buildExpress = function(options) {
     if (req.session.user === undefined) {
       res.send(401, 'Unauthorized');
     } else {
-      proxy(req, res);
+      proxy(req).pipe(res);
     }
   });
 
