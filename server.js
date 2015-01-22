@@ -49,6 +49,21 @@ exports.buildExpress = function(options) {
     return auth;
   }
 
+  function basicAuth(req) {
+    var auth64, credentials, index;
+
+    if (!req.headers.authorization) return null;
+
+    auth64 = req.headers.authorization.split(' ')[1];
+    credentials = new Buffer(auth64, 'base64').toString();
+    index = credentials.indexOf(':');
+
+    return {
+      username: credentials.slice(0, index),
+      password: credentials.slice(index + 1)
+    };
+  }
+
   function proxyConfig(req) {
     return {
       url: url.format({
@@ -79,7 +94,25 @@ exports.buildExpress = function(options) {
     return req.pipe( request(config) );
   }
 
+  // optional basic auth, for cmd-line client
+  function basicAuthProxy(req, res) {
+    var auth;
 
+    if ( !req.session.user ) {
+      auth = basicAuth(req);
+      if ( !auth ) {
+        return res.send(401, 'Unauthorized');
+      }
+      req.session.user = auth;
+    }
+
+    proxy(req).pipe(res);
+  }
+
+  app.put('/v1/resources/publish', basicAuthProxy);
+  app.post('/v1/resources/unpublish', basicAuthProxy);
+
+  // TODO: rewrite user handling
   app.get('/user/status', function(req, res) {
     if (req.session.user === undefined) {
       res.send('{"authenticated": false}');
@@ -152,22 +185,6 @@ exports.buildExpress = function(options) {
   app.get('/user/logout', function(req, res) {
     delete req.session.user;
     res.send();
-  });
-
-  // optional basic auth, for cmd-line client
-  app.put('/v1/resources/publish', function(req, res) {
-    var auth64, credentials, index;
-    if ( !req.session.user ) {
-      auth64 = req.headers.authorization.split(' ')[1];
-      credentials = new Buffer(auth64, 'base64').toString();
-      index = credentials.indexOf(':');
-      req.session.user = {
-        username: credentials.slice(0, index),
-        password: credentials.slice(index + 1)
-      };
-    }
-
-    proxy(req).pipe(res);
   });
 
   // ==================================

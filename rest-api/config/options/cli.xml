@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <options xmlns="http://marklogic.com/appservices/search">
   <searchable-expression xmlns:mlpm="http://mlpm.org/ns">/mlpm:package</searchable-expression>
+  <additional-query>
+    <cts:collection-query xmlns:cts="http://marklogic.com/cts">
+      <cts:uri>http://mlpm.org/ns/collection/published</cts:uri>
+    </cts:collection-query>
+  </additional-query>
   <search-option>unfiltered</search-option>
   <page-length>10</page-length>
   <grammar>

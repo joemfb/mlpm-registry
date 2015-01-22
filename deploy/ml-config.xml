@@ -414,7 +414,7 @@
   <roles xmlns="http://marklogic.com/xdmp/security">
     <role>
       <role-name>@ml.app-role</role-name>
-      <description>A role for users of the @ml.app-name application</description>
+      <description>A role for guest users of the @ml.app-name application</description>
       <role-names>
         <role-name>rest-reader</role-name>
       </role-names>
@@ -452,6 +452,14 @@
           <privilege-name>xdmp:with-namespaces</privilege-name>
         </privilege>
       </privileges>
+    </role>
+    <role>
+      <role-name>mlpm-registry-writer</role-name>
+      <description>A role for authenticated users of the @ml.app-name application</description>
+      <role-names>
+        <role-name>@ml.app-role</role-name>
+        <role-name>rest-writer</role-name>
+      </role-names>
     </role>
   </roles>
   <users xmlns="http://marklogic.com/xdmp/security">

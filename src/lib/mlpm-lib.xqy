@@ -4,6 +4,11 @@ module namespace mlpm = "http://mlpm.org/ns";
 
 import module namespace json="http://marklogic.com/xdmp/json" at "/MarkLogic/json/json.xqy";
 
+declare variable $mlpm:doc-permissions := (
+  xdmp:permission("mlpm-registry-role", "read"),
+  xdmp:permission("mlpm-registry-writer", "update")
+);
+
 declare option xdmp:mapping "false";
 
 declare function mlpm:to-json($xml as element()) as json:object
@@ -40,6 +45,9 @@ declare function mlpm:to-json($xml as element()) as json:object
 
 declare function mlpm:to-xml($json) as element()+
 {
+  (: clone to avoid side effects (ugh) :)
+  let $json := mlpm:json-clone($json, ())
+
   let $conf := map:new((
     json:config("custom"),
     map:entry("element-namespace-prefix", "mlpm"),
@@ -93,17 +101,9 @@ declare function mlpm:json-clone(
 declare function mlpm:find($package-name as xs:string) as element(mlpm:package)?
 {
   cts:search(/mlpm:package,
-    cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name), "unfiltered")
-};
-
-declare function mlpm:find-version($arg as item()) as element(mlpm:package-version)*
-{
-  if ($arg instance of element(mlpm:dependency))
-  then mlpm:find-version($arg/mlpm:package-name/fn:string(), $arg/mlpm:semver/fn:string())
-  else
-    if ($arg instance of xs:string)
-    then mlpm:find-version($arg, ())
-    else fn:error(xs:QName("UNKNOWN-ARGUMENT"), "argument not of type xs:string or element(mlpm:dependency)", $arg)
+    cts:and-query((
+      cts:collection-query("http://mlpm.org/ns/collection/published"),
+      cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name))), "unfiltered")
 };
 
 declare function mlpm:find-version(
@@ -115,13 +115,16 @@ declare function mlpm:find-version(
   then (
     for $x in
       cts:search(/mlpm:package-version,
-        cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name), "unfiltered")
+        cts:and-query((
+          cts:collection-query("http://mlpm.org/ns/collection/published"),
+          cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name))), "unfiltered")
     order by $x/mlpm:created descending
     return $x
   )[1]
   else
     cts:search(/mlpm:package-version,
       cts:and-query((
+        cts:collection-query("http://mlpm.org/ns/collection/published"),
         cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name),
         cts:element-range-query(xs:QName("mlpm:version"), "=", $version))), "unfiltered")
 };
@@ -156,11 +159,11 @@ declare function mlpm:resolve(
   ))
 };
 
-declare function mlpm:get-archive($mlpm as element(mlpm:package-version)) as document-node()
+declare function mlpm:get-archive-uri($mlpm as element(mlpm:package-version)) as xs:string
 {
   let $package-name := $mlpm/mlpm:name/fn:string()
   let $dir := mlpm:version-dir($package-name, $mlpm/mlpm:version/fn:string())
-  return fn:doc($dir || $package-name || ".zip")
+  return $dir || $package-name || ".zip"
 };
 
 declare function mlpm:version-dir(
@@ -254,7 +257,10 @@ declare function mlpm:save-package(
 {
   xdmp:document-insert(
     "/packages/" || $package-name || "/package.xml",
-    element mlpm:package { mlpm:to-xml($mlpm) })
+    element mlpm:package { mlpm:to-xml($mlpm) },
+    $mlpm:doc-permissions,
+    ("http://mlpm.org/ns/collection/published",
+    "http://mlpm.org/ns/collection/package"))
 };
 
 declare function mlpm:save-version(
@@ -267,8 +273,48 @@ declare function mlpm:save-version(
   let $dir := mlpm:version-dir($package-name, $version)
   return (
     map:put($mlpm, "created", fn:current-dateTime()),
-    xdmp:document-insert($dir || $package-name || ".zip", $input),
-    xdmp:document-insert($dir || "mlpm.xml",
-      element mlpm:package-version { mlpm:to-xml($mlpm) })
+    xdmp:document-insert(
+      $dir || $package-name || ".zip",
+      $input,
+      $mlpm:doc-permissions,
+      ("http://mlpm.org/ns/collection/published",
+      "http://mlpm.org/ns/collection/package-archive")),
+    xdmp:document-insert(
+      $dir || "mlpm.xml",
+      element mlpm:package-version { mlpm:to-xml($mlpm) },
+      $mlpm:doc-permissions,
+      ("http://mlpm.org/ns/collection/published",
+      "http://mlpm.org/ns/collection/package-version"))
   )
+};
+
+declare function mlpm:unpublish($package as element(mlpm:package), $version as xs:string?)
+{
+  (: TODO: validate author/maintainer :)
+  let $versions :=
+    if ($version)
+    then $version
+    else $package/mlpm:versions/mlpm:version/fn:string()
+  return (
+    for $x in $versions
+    let $package-version := mlpm:find-version($package/mlpm:name, $x)
+    let $uris := (
+      $package-version/fn:base-uri(.),
+      mlpm:get-archive-uri($package-version)
+    )
+    return $uris ! mlpm:unpublish-uri(.)
+    ,
+    if (fn:not($version) or fn:count($versions) eq 1)
+    then mlpm:unpublish-uri($package/fn:base-uri(.))
+    else ()
+  )
+};
+
+declare function mlpm:unpublish-uri($uri as xs:string)
+{
+  let $collections := (
+    xdmp:document-get-collections($uri)[. ne "http://mlpm.org/ns/collection/published"],
+    "http://mlpm.org/ns/collection/unpublished"
+  )
+  return xdmp:document-set-collections($uri, $collections)
 };
