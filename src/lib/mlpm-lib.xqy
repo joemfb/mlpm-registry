@@ -202,10 +202,11 @@ declare function mlpm:publish(
     else
       if (fn:exists(mlpm:find-version($package-name, $version)))
       then fn:error(xs:QName("VERSION-EXISTS"), "version already exists", ($package-name, $version))
+      (: TODO: check for unpublished version :)
       else
         let $deps := map:get($mlpm, "dependencies")
         return
-          if ( fn:not(map:count($deps)) or (map:count($deps) and mlpm:valid-deps($deps)) )
+          if ( fn:not(fn:exists($deps)) or (map:count($deps) and mlpm:valid-deps($deps)) )
           then (
             mlpm:save-version($mlpm, $input, $package-name, $version),
             mlpm:save-package($package-name,
