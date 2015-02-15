@@ -28,8 +28,18 @@ var options = {
   appPort: argv['app-port'] || 8096,
   mlHost: argv['ml-host'] || 'localhost',
   mlPort: argv['ml-port'] || 8094,
+
+  // TODO: set default rest-reader privileged rest-writer
   defaultUser: 'mlpm-registry-user',
-  defaultPass: 'K#Xbbr\'OE1py7w`FE>Ai'
+  defaultPass: 'K#Xbbr\'OE1py7w`FE>Ai',
+  privilegedUser: 'admin',
+  privilegedPass: 'admin',
+
+  githubSettings: {
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackURL: process.env.GITHUB_CLIENT_CALLBACK
+  }
 };
 
 gulp.task('jshint', function() {

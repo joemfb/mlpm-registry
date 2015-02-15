@@ -37,22 +37,34 @@ function buildExpress(options) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  passport.use(new GitHubStrategy({
-      clientID: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: process.env.GITHUB_CLIENT_CALLBACK
-    },
-    function(accessToken, refreshToken, profile, done) {
-      console.log(arguments)
-      // asynchronous verification, for effect...
-      process.nextTick(function () {
+  function getPrivilegedAuth() {
+    return {
+      user: options.privilegedUser,
+      password: options.privilegedPass,
+      sendImmediately: false
+    };
+  }
 
-        // TODO: get user from ML
-        // use node-client
-        // find user by github name / create new user
-        // save user.id in session
-        return done(null, profile);
-      });
+  function createOrUpdateUser(user, cb) {
+    request({
+      url: url.format({
+        protocol: 'http:',
+        port: options.mlPort,
+        hostname: options.mlHost,
+        pathname: '/v1/resources/user'
+      }),
+      method: 'POST',
+      json: user,
+      auth: getPrivilegedAuth()
+    }, function (error, response, body)  {
+      cb(error, body);
+    });
+  }
+
+  passport.use(new GitHubStrategy(options.githubSettings,
+    function(accessToken, refreshToken, profile, done) {
+      //TODO: save gh tokens?
+      createOrUpdateUser(profile, done);
     }
   ));
 
@@ -66,8 +78,7 @@ function buildExpress(options) {
   app.get('/auth/github/callback',
     passport.authenticate('github', { failureRedirect: '/login' }),
     function(req, res) {
-      console.log(req.session)
-      res.redirect('/');
+      res.redirect('/profile');
     });
 
   function getAuth(session) {
