@@ -78,7 +78,7 @@ function buildExpress(options) {
   app.get('/auth/github/callback',
     passport.authenticate('github', { failureRedirect: '/login' }),
     function(req, res) {
-      res.redirect('/profile');
+      res.redirect('/account');
     });
 
   function getAuth(session) {

@@ -1,0 +1,10 @@
+<div class="row" ng-show="model.user.authenticated">
+  <h2>account info</h2>
+  <div><span>{{ model.user.name }}</div>
+  <div><span><a ng-href="{{ model.user['github-data']['html-url'] }}">{{ model.user['github-data']['html-url'] }}</a></div>
+  <div><span>username: </span>{{ model.user.username }}</div>
+  <div>
+    <span>login command:</span>
+    <pre style="width:400px">mlpm login {{ model.user.token }}</pre>
+  </div>
+</div>

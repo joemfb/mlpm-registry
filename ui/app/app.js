@@ -33,9 +33,9 @@ angular.module('sample', [
         templateUrl: '/detail/detail.html',
         controller: 'DetailCtrl'
       })
-      .when('/profile', {
-        templateUrl: '/user/profile.html',
-        controller: 'ProfileCtrl'
+      .when('/account', {
+        templateUrl: '/user/account.html',
+        controller: 'AccountCtrl'
       })
       .otherwise({
         redirectTo: '/'
