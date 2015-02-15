@@ -16,6 +16,7 @@ var gulp = require('gulp');
 
 var argv = require('yargs').argv;
 var concat = require('gulp-concat');
+var fs = require('fs');
 var jshint = require('gulp-jshint');
 var less = require('gulp-less');
 var karma = require('karma').server;
@@ -97,6 +98,7 @@ gulp.task('autotest', function() {
 gulp.task('server', function() {
   var server = require('./server.js').buildExpress(options);
   server.listen(options.appPort);
+  fs.writeFileSync('gulp-default.pid', process.pid.toString(), 'ascii');
 });
 
 // Default Task
