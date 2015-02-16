@@ -10,6 +10,42 @@ var express = require('express'),
     url = require('url'),
     GitHubStrategy = require('passport-github2').Strategy;
 
+function basicAuth(req) {
+  var auth64, credentials, index;
+
+  if (!req.headers.authorization) return null;
+
+  auth64 = req.headers.authorization.split(' ')[1];
+  credentials = new Buffer(auth64, 'base64').toString();
+  index = credentials.indexOf(':');
+
+  return {
+    username: credentials.slice(0, index),
+    password: credentials.slice(index + 1)
+  };
+}
+
+function isTokenAuth(req) {
+  return (
+    ( !!req.headers.authorization &&
+      req.headers.authorization.split(' ')[0] === 'Token' ) ||
+    !!req.query['rs:token']
+  );
+}
+
+function tokenAuth(req) {
+  var tokens, scheme;
+
+  if (!req.headers.authorization) return null;
+
+  tokens = req.headers.authorization.split(' ');
+  scheme = tokens[0];
+
+  if (scheme !== 'Token') return null;
+
+  return { token: tokens[1] };
+}
+
 function buildExpress(options) {
   var app = express();
 
@@ -37,12 +73,69 @@ function buildExpress(options) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  function getAuth(session) {
+    var auth = { sendImmediately: false };
+
+    if ( session.user && session.user.username && session.user.password ) {
+      auth.user = session.user.username;
+      auth.pass = session.user.password;
+    } else {
+      auth.user = options.defaultUser;
+      auth.pass = options.defaultPass;
+    }
+
+    return auth;
+  }
+
   function getPrivilegedAuth() {
     return {
       user: options.privilegedUser,
       password: options.privilegedPass,
       sendImmediately: false
     };
+  }
+
+  // TODO:
+  //   proxy all requests with rest-reader only
+  //   (so no API methods need to be session-protected)
+  function proxyConfig(req) {
+    return {
+      url: url.format({
+        protocol: 'http:',
+        port: options.mlPort,
+        hostname: options.mlHost,
+        pathname: req.path
+      }),
+      method: req.method,
+      headers: req.headers,
+      qs: req.query,
+      auth: isTokenAuth(req) ? getPrivilegedAuth() : getAuth(req.session)
+    };
+  }
+
+  // Generic proxy function used by multiple HTTP verbs
+  function proxy(req) {
+    var config = proxyConfig(req);
+
+    if (req.body !== undefined) {
+      if ( req.headers['content-type'] === 'application/zip' ) {
+        config.body = req.body;
+      } else {
+        config.body = JSON.stringify(req.body);
+      }
+    }
+
+    return req.pipe( request(config) );
+  }
+
+  function privilegedProxy(req, res) {
+    if ( isTokenAuth(req) ) {
+      req.query['rs:token'] = tokenAuth(req).token;
+    } else {
+      req.session.user = basicAuth(req);
+    }
+
+    proxy(req).pipe(res);
   }
 
   function createOrUpdateUser(user, cb) {
@@ -81,88 +174,8 @@ function buildExpress(options) {
       res.redirect('/account');
     });
 
-  function getAuth(session) {
-    var auth = { sendImmediately: false };
-
-    if ( session.user && session.user.username && session.user.password ) {
-      auth.user = session.user.username;
-      auth.pass = session.user.password;
-    } else {
-      auth.user = options.defaultUser;
-      auth.pass = options.defaultPass;
-    }
-
-    return auth;
-  }
-
-  function basicAuth(req) {
-    var auth64, credentials, index;
-
-    if (!req.headers.authorization) return null;
-
-    auth64 = req.headers.authorization.split(' ')[1];
-    credentials = new Buffer(auth64, 'base64').toString();
-    index = credentials.indexOf(':');
-
-    return {
-      username: credentials.slice(0, index),
-      password: credentials.slice(index + 1)
-    };
-  }
-
-  // TODO:
-  //   proxy all requests with rest-reader only
-  //   (so no API methods need to be session-protected)
-  function proxyConfig(req) {
-    return {
-      url: url.format({
-        protocol: 'http:',
-        port: options.mlPort,
-        hostname: options.mlHost,
-        pathname: req.path
-      }),
-      method: req.method,
-      headers: req.headers,
-      qs: req.query,
-      auth: getAuth(req.session)
-    };
-  }
-
-  // Generic proxy function used by multiple HTTP verbs
-  function proxy(req) {
-    var config = proxyConfig(req);
-
-    if (req.body !== undefined) {
-      if ( req.headers['content-type'] === 'application/zip' ) {
-        config.body = req.body;
-      } else {
-        config.body = JSON.stringify(req.body);
-      }
-    }
-
-    return req.pipe( request(config) );
-  }
-
-  // optional basic auth, for cmd-line client
-  function basicAuthProxy(req, res) {
-    var auth;
-
-    if ( !req.session.user ) {
-      auth = basicAuth(req);
-      if ( !auth ) {
-        return res.send(401, 'Unauthorized');
-      }
-      req.session.user = auth;
-    }
-
-    proxy(req).pipe(res);
-  }
-
-  // TODO:
-  //   check for Token (or Basic?) auth on /publish
-  //   (don't proxy, use node-client db.invoke?)
-  app.put('/v1/resources/publish', basicAuthProxy);
-  app.post('/v1/resources/unpublish', basicAuthProxy);
+  app.put('/v1/resources/publish', privilegedProxy);
+  app.delete('/v1/resources/publish', privilegedProxy);
 
   // TODO: rewrite user handling
   // /user/status retrieves user from ML by id

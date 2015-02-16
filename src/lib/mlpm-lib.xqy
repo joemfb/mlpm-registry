@@ -187,41 +187,94 @@ declare function mlpm:valid-deps($deps as map:map) as xs:boolean
       else fn:error(xs:QName("MISSING-DEPENDENCY"), "dependency doesn't exist", $dep || "@" || $semver))
 };
 
-declare function mlpm:publish(
-  $mlpm as json:object,
-  $input as document-node(),
-  $package-name as xs:string,
-  $version as xs:string
-) {
-  (: TODO: validate author/maintainer :)
-  if (fn:false())
-  then fn:error(xs:QName("UNPRIVILEGED"), "$user is not allowed to modify " || $package-name)
-  else
-    if (fn:string-length($version) eq 0)
-    then fn:error(xs:QName("NO-VERSION"), "no version specificed", $package-name)
+declare function mlpm:authenticate(
+  $username as xs:string,
+  $package-name as xs:string
+) as xs:boolean
+{
+  let $package := mlpm:find($package-name)
+  return
+    if (fn:not($username))
+    then fn:false()
     else
-      if (fn:exists(mlpm:find-version($package-name, $version)))
-      then fn:error(xs:QName("VERSION-EXISTS"), "version already exists", ($package-name, $version))
-      (: TODO: check for unpublished version :)
+      if (fn:exists($package))
+      then
+        if (fn:exists($package/mlpm:author))
+        (: TODO: contributors :)
+        then $username eq $package/mlpm:author
+        else xdmp:get-current-roles() = xdmp:role("admin")
+      else fn:true()
+};
+
+declare function mlpm:authenticate-update(
+  $username as xs:string,
+  $package-name as xs:string
+)
+{
+  let $authenticated := mlpm:authenticate($username, $package-name)
+  return
+    if ($authenticated) then ()
+    else
+      let $msg :=
+        if (fn:not($username))
+        then "unknown token"
+        else "$user is not allowed to modify " || $package-name
+      return fn:error(xs:QName("UNPRIVILEGED"), $msg)
+};
+
+declare function mlpm:publish(
+  $input as document-node(),
+  $username as xs:string
+) {
+  (: TODO: scan the manifest for mlpm.(json|xml) (at any level?) :)
+  let $mlpm := xdmp:from-json( xdmp:zip-get($input, "mlpm.json") )
+
+  let $package-name :=  map:get($mlpm, "name")
+  let $version := map:get($mlpm, "version")
+
+  let $_ := mlpm:authenticate-update($username, $package-name)
+  let $_ := xdmp:log("start publish", "error")
+  return
+    (: TODO: check the $mlpm exists
+    if ()
+    then fn:error(xs:QName("bad input"), $msg)
+    else
+    :)
+      if (fn:string-length($version) eq 0)
+      then fn:error(xs:QName("NO-VERSION"), "no version specificed", $package-name)
       else
-        let $deps := map:get($mlpm, "dependencies")
-        return
-          if ( fn:not(fn:exists($deps)) or (map:count($deps) and mlpm:valid-deps($deps)) )
-          then (
-            mlpm:save-version($mlpm, $input, $package-name, $version),
-            mlpm:save-package($package-name,
-              mlpm:update-package($package-name, $version, $mlpm))
+        if (fn:exists(mlpm:find-version($package-name, $version)))
+        then fn:error(xs:QName("VERSION-EXISTS"), "version already exists", ($package-name, $version))
+        (: TODO: check for unpublished version :)
+        else
+          let $deps := map:get($mlpm, "dependencies")
+          let $_ := (
+            xdmp:log($deps, "error"),
+            xdmp:log(xdmp:type($deps), "error"),
+            xdmp:log(xdmp:describe($deps), "error")
           )
-          (: Error propogated from mlpm:valid-deps :)
-          else ()
+          return
+            if ( fn:not(fn:exists($deps)) or
+                 fn:not(map:count($deps)) or
+                 (map:count($deps) and mlpm:valid-deps($deps)) )
+            then (
+
+              xdmp:log("actually publish", "error"),
+
+              mlpm:save-version($mlpm, $input),
+              mlpm:save-package( mlpm:update-package($mlpm, $username) )
+            )
+            (: Error propogated from mlpm:valid-deps :)
+            else xdmp:log("nevermind", "error")
 };
 
 declare function mlpm:update-package(
-  $package-name as xs:string,
-  $version as xs:string,
-  $mlpm as json:object
+  $mlpm as json:object,
+  $username as xs:string
 ) as json:object
 {
+  let $package-name :=  map:get($mlpm, "name")
+  let $version := map:get($mlpm, "version")
   let $doc := mlpm:find($package-name)
   let $mlpm :=
     if ($doc)
@@ -240,37 +293,39 @@ declare function mlpm:update-package(
           )))
         ))
     else
-      map:new((
-        mlpm:json-clone($mlpm, "version"),
-        map:entry("versions", json:to-array($version)),
-        map:entry("created", fn:current-dateTime()),
-        map:entry("time", map:new((
+      let $author := (map:get($mlpm, "author"), $username)[1]
+      return
+        map:new((
+          mlpm:json-clone($mlpm, "version"),
+          map:entry("author", $author),
+          map:entry("versions", json:to-array($version)),
           map:entry("created", fn:current-dateTime()),
-          map:entry("modified", fn:current-dateTime()))
-        ))))
+          map:entry("time", map:new((
+            map:entry("created", fn:current-dateTime()),
+            map:entry("modified", fn:current-dateTime()))
+          ))))
   return xdmp:from-json( xdmp:to-json( $mlpm ) )
 };
 
-declare function mlpm:save-package(
-  $package-name as xs:string,
-  $mlpm as json:object
-)
+declare function mlpm:save-package($mlpm as json:object)
 {
-  xdmp:document-insert(
-    "/packages/" || $package-name || "/package.xml",
-    element mlpm:package { mlpm:to-xml($mlpm) },
-    $mlpm:doc-permissions,
-    ("http://mlpm.org/ns/collection/published",
-    "http://mlpm.org/ns/collection/package"))
+  let $package-name :=  map:get($mlpm, "name")
+  return
+    xdmp:document-insert(
+      "/packages/" || $package-name || "/package.xml",
+      element mlpm:package { mlpm:to-xml($mlpm) },
+      $mlpm:doc-permissions,
+      ("http://mlpm.org/ns/collection/published",
+      "http://mlpm.org/ns/collection/package"))
 };
 
 declare function mlpm:save-version(
   $mlpm as json:object,
-  $input as document-node(),
-  $package-name as xs:string,
-  $version as xs:string
+  $input as document-node()
 )
 {
+  let $package-name :=  map:get($mlpm, "name")
+  let $version := map:get($mlpm, "version")
   let $dir := mlpm:version-dir($package-name, $version)
   return (
     map:put($mlpm, "created", fn:current-dateTime()),
@@ -289,9 +344,14 @@ declare function mlpm:save-version(
   )
 };
 
-declare function mlpm:unpublish($package as element(mlpm:package), $version as xs:string?)
+declare function mlpm:unpublish(
+  $package as element(mlpm:package),
+  $version as xs:string?,
+  $username as xs:string
+)
 {
-  (: TODO: validate author/maintainer :)
+  let $_ := mlpm:authenticate-update($username, $package/mlpm:name)
+
   let $versions :=
     if ($version)
     then $version

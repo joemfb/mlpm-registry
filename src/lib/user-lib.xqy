@@ -11,6 +11,11 @@ declare function user:find($username as xs:string) as element(user:user)?
   cts:search(/user:user, cts:element-range-query(xs:QName("user:username"), "=", $username), "unfiltered")
 };
 
+declare function user:find-by-token($token as xs:string) as element(user:user)?
+{
+  cts:search(/user:user, cts:element-range-query(xs:QName("user:token"), "=", $token), "unfiltered")
+};
+
 declare function user:from-json($x)
 {
   typeswitch($x)
@@ -50,13 +55,7 @@ declare function user:create-user($json as json:object) as element(user:user)
     element user:user {
       element user:name { $user/user:displayName/fn:string() },
       $user/(user:username|user:emails|user:github-data),
-      element user:tokens {
-        element user:token {
-          attribute active { "true" },
-          attribute created-at { fn:current-dateTime() },
-          fn:replace(sem:uuid-string(), "-", "")
-        }
-      }
+      user:new-token()
     }
 };
 
@@ -70,6 +69,30 @@ declare function user:update-user($user as element(user:user), $json as json:obj
     }
 };
 
+declare function user:new-token() as element(user:token)
+{
+  element user:token {
+    attribute created-at { fn:current-dateTime() },
+    fn:replace(sem:uuid-string(), "-", "")
+  }
+};
+
+declare function user:revoke-token($user as element(user:user)) as element(user:user)
+{
+  element user:user {
+    $user/* except $user/(user:token|user:revoked-tokens),
+    user:new-token(),
+    element user:revoked-tokens {
+      $user/user:revoked-tokens/*,
+      element user:revoked-token {
+        $user/user:token/@*,
+        attribute revoked-at { fn:current-dateTime() },
+        $user/user:token/fn:string()
+      }
+    }
+  }
+};
+
 declare function user:to-json($x)
 {
   typeswitch($x)
@@ -77,9 +100,20 @@ declare function user:to-json($x)
     xdmp:from-json(
       xdmp:to-json(
         map:new(($x/node() ! user:to-json(.)))))
-  case element(user:tokens) return
-    user:to-json(
-      fn:exactly-one($x/user:token[@active eq "true"]))
+  case element(user:revoked-tokens) return (
+    map:entry(fn:local-name($x), json:to-array(
+      for $token in $x/*
+      return map:new((
+        map:entry("token", $token/fn:string()),
+        map:entry("revoked", $token/@revoked-at/fn:string())
+      ))
+    ))
+  )
+  (:
+    TODO: assert privileged / return ()
+  case element(user:token)
+  case element(user:emails)
+  :)
   case element() return
     map:entry(fn:local-name($x),
       if ($x/*)

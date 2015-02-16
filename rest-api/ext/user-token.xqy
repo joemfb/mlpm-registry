@@ -1,6 +1,6 @@
 xquery version "1.0-ml";
 
-module namespace ext = "http://marklogic.com/rest-api/resource/user";
+module namespace ext = "http://marklogic.com/rest-api/resource/user-token";
 
 import module namespace user = "http://mlpm.org/ns/user" at "/lib/user-lib.xqy";
 
@@ -23,7 +23,7 @@ function ext:get(
     if (fn:exists($user))
     then (
       map:put($context, "output-status", (200, "Ok")),
-      document { xdmp:to-json( user:to-json($user) ) }
+      document { xdmp:to-json( user:to-json($user/user:token) ) }
     )
     else (
       map:put($context, "output-status", (404, "Not Found")),
@@ -31,7 +31,9 @@ function ext:get(
     )
 };
 
-declare function ext:post(
+declare
+  %roxy:params("username=xs:string")
+function ext:post(
     $context as map:map,
     $params  as map:map,
     $input   as document-node()*
@@ -41,18 +43,21 @@ declare function ext:post(
 
   (: TODO: assert privileged (rest-writer)? :)
 
-  let $json := xdmp:from-json($input)
-  let $username := map:get($json, "username")
-  let $user :=
-    let $x := user:find($username)
-    return
-      if (fn:exists($x))
-      then user:update-user($x, $json)
-      else user:create-user($json)
-  return (
-    map:put($context, "output-status", (200, "Ok")),
-    (: TODO: always update? :)
-    user:save-user($user),
-    document { xdmp:to-json( user:to-json($user) ) }
-  )
+  let $username := map:get($params, "username")
+  let $user := user:find($username)
+  return
+    if (fn:exists($user))
+    then (
+      map:put($context, "output-status", (200, "Ok")),
+
+      let $updated := user:revoke-token($user)
+      return (
+        user:save-user($updated),
+        document { xdmp:to-json( user:to-json($updated/user:token) ) }
+      )
+    )
+    else (
+      map:put($context, "output-status", (404, "Not Found")),
+      document { "Not Found" }
+    )
 };
