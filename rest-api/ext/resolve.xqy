@@ -26,8 +26,14 @@ function ext:get(
        xdmp:to-json( mlpm:resolve($package) )
       }
     )
-    else (
-      map:put($context, "output-status", (404, "Not Found")),
-      document { "Not Found" }
-    )
+    else
+      if (mlpm:unpublished-exists($package-name))
+      then (
+        map:put($context, "output-status", (410, "Unpublished")),
+        document { "Unpublished" }
+      )
+      else (
+        map:put($context, "output-status", (404, "Not Found")),
+        document { "Not Found" }
+      )
 };

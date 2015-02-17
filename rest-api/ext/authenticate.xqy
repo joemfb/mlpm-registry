@@ -14,6 +14,7 @@ function ext:get(
 ) as document-node()*
 {
   map:put($context, "output-types", "application/json"),
+  xdmp:security-assert("http://marklogic.com/xdmp/privileges/rest-writer", "execute"),
 
   let $token := map:get($params, "token")
   let $user := user:find-by-token($token)

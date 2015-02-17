@@ -25,8 +25,14 @@ function ext:get(
       xdmp:add-response-header("Content-Disposition", "attachment;filename=" || $package-name || ".zip"),
       fn:doc(mlpm:get-archive-uri($package))
     )
-    else (
-      map:put($context, "output-status", (404, "Not Found")),
-      document { "Not Found" }
-    )
+    else
+      if (mlpm:unpublished-version-exists($package-name, $version))
+      then (
+        map:put($context, "output-status", (410, "Unpublished")),
+        document { "Unpublished" }
+      )
+      else (
+        map:put($context, "output-status", (404, "Not Found")),
+        document { "Not Found" }
+      )
 };

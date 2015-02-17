@@ -14,8 +14,7 @@ function ext:get(
 ) as document-node()*
 {
   map:put($context, "output-types", "application/json"),
-
-  (: TODO: assert privileged (rest-writer)? :)
+  xdmp:security-assert("http://marklogic.com/xdmp/privileges/rest-writer", "execute"),
 
   let $username := map:get($params, "$username")
   let $user := user:find($username)
@@ -38,8 +37,7 @@ declare function ext:post(
 ) as document-node()*
 {
   map:put($context, "output-types", "application/json"),
-
-  (: TODO: assert privileged (rest-writer)? :)
+  xdmp:security-assert("http://marklogic.com/xdmp/privileges/rest-writer", "execute"),
 
   let $json := xdmp:from-json($input)
   let $username := map:get($json, "username")
