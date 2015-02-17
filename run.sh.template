@@ -1,4 +1,9 @@
+# set with the values used to register the application https://github.com/settings/applications/new
 export GITHUB_CLIENT_ID=
 export GITHUB_CLIENT_SECRET=
 export GITHUB_CLIENT_CALLBACK=
+
+# set to match `appwriter-password` in `deploy/<env>.properties`
+export PRIVILEGED_USER_PW=
+
 gulp

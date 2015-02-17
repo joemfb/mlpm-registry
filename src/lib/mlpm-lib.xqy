@@ -6,7 +6,7 @@ import module namespace json="http://marklogic.com/xdmp/json" at "/MarkLogic/jso
 
 declare variable $mlpm:doc-permissions := (
   xdmp:permission("mlpm-registry-role", "read"),
-  xdmp:permission("mlpm-registry-writer", "update")
+  xdmp:permission("mlpm-registry-writer-role", "update")
 );
 
 declare option xdmp:mapping "false";

@@ -1,0 +1,10 @@
+# admin credentials
+user=
+# leave password blank to prompt
+password=
+
+# if <env> is not "local", set the hostname
+# <env>-server=
+
+# password of ml-registry-writer-user (set to a random string)
+appwriter-password=

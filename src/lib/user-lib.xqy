@@ -2,6 +2,7 @@ xquery version "1.0-ml";
 
 module namespace user = "http://mlpm.org/ns/user";
 
+import module namespace mlpm = "http://mlpm.org/ns" at "/lib/mlpm-lib.xqy";
 import module namespace json = "http://marklogic.com/xdmp/json" at "/MarkLogic/json/json.xqy";
 
 declare namespace jsonb = "http://marklogic.com/xdmp/json/basic";
@@ -45,11 +46,12 @@ declare function user:save-user($user as element(user:user))
   let $uri :=  "/users/" ||
     fn:exactly-one($user/user:username) || "-" ||
     fn:exactly-one($user/user:github-data/user:id) || ".xml"
-  return xdmp:document-insert($uri, $user)
+  return xdmp:document-insert($uri, $user, $mlpm:doc-permissions)
 };
 
 declare function user:create-user($json as json:object) as element(user:user)
 {
+  (: TODO: store timestamps? :)
   let $user := user:from-json(json:transform-from-json($json))
   return
     element user:user {
@@ -61,6 +63,7 @@ declare function user:create-user($json as json:object) as element(user:user)
 
 declare function user:update-user($user as element(user:user), $json as json:object)
 {
+  (: TODO: store timestamps? :)
   let $new-user := user:from-json(json:transform-from-json($json))
   return
     element user:user {

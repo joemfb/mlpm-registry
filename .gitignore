@@ -5,6 +5,8 @@ dist
 ui/app/bower_components
 ui/app/styles/main.css
 deploy/local.properties
+deploy/dev.properties
+deploy/prod.properties
 simplelogger*
 npm-debug.log
 *.map

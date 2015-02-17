@@ -32,8 +32,8 @@ var options = {
   // TODO: set default rest-reader privileged rest-writer
   defaultUser: 'mlpm-registry-user',
   defaultPass: 'K#Xbbr\'OE1py7w`FE>Ai',
-  privilegedUser: 'admin',
-  privilegedPass: 'admin',
+  privilegedUser: 'mlpm-registry-writer-user',
+  privilegedPass: process.env.PRIVILEGED_USER_PW,
 
   githubSettings: {
     clientID: process.env.GITHUB_CLIENT_ID,
@@ -41,6 +41,18 @@ var options = {
     callbackURL: process.env.GITHUB_CLIENT_CALLBACK
   }
 };
+
+if ( !options.privilegedPass ||
+     !options.githubSettings.clientID ||
+     !options.githubSettings.clientSecret ||
+     !options.githubSettings.callbackURL ) {
+  console.log('missing required env variable(s)');
+  if ( !options.privilegedPass ) console.log('PRIVILEGED_USER_PW');
+  if ( !options.githubSettings.clientID ) console.log('GITHUB_CLIENT_ID');
+  if ( !options.githubSettings.clientSecret ) console.log('GITHUB_CLIENT_SECRET');
+  if ( !options.githubSettings.callbackURL ) console.log('GITHUB_CLIENT_CALLBACK');
+  return;
+}
 
 gulp.task('jshint', function() {
   gulp.src([
