@@ -2,6 +2,25 @@
 
 package registry for mlpm (a MarkLogic package manager)
 
+##### setup
+
+    cp deploy/properties.template deploy/<env>.properties.template
+
+and follow the steps in the comments
+
+    cp run.sh.template run.sh
+    chmod +x run.sh
+
+Set the `PRIVILEGED_USER_PW` env variable to the same value as `appwriter-password` in `deploy/<env>.properties`.
+
+To enable login via github OAUTH, register a new github application (https://github.com/settings/applications/new), then set the `GITHUB_*` env variables.
+
+    ./ml <env> bootstrap
+    ./ml <env> deploy modules
+    ./run.sh
+
+TODO: add sample data
+
 ##### license
 
 - Copyright (c) 2014 Joseph Bryan. All Rights Reserved.
