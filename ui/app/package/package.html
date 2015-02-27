@@ -1,0 +1,14 @@
+<div class="row detail">
+  <div class="col-md-12">
+    <h2>{{ model.detail.name }}</h2>
+  </div>
+  <div class="col-md-9">
+    <p>{{ model.detail.description }}</p>
+    <pre>{{model.detail}}</pre>
+  </div>
+  <div class="col-md-3">
+    <p>{{ model.detail.author }}</p>
+    <p>latest: {{ model.detail.versions[0] }}</p>
+    <p>repository: {{ model.detail.repository }}</p>
+  </div>
+</div>

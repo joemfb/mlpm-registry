@@ -1,2 +1,2 @@
 
-angular.module('sample.user', []);
+angular.module('mlpm.user', []);

@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  angular.module('sample.user')
+  angular.module('mlpm.user')
     .controller('AccountCtrl', ['$scope', 'User', '$location', function ($scope, user, $location) {
       var model = {
         user: user

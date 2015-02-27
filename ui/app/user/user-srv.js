@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  angular.module('sample.user')
+  angular.module('mlpm.user')
     .factory('User', ['$http', function($http) {
       var user = {};
 

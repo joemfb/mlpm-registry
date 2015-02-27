@@ -1,2 +1,2 @@
 
-angular.module('sample.search', []);
+angular.module('mlpm.search', []);

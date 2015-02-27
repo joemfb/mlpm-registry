@@ -2,7 +2,7 @@
 
   'use strict';
 
-  angular.module('sample.user')
+  angular.module('mlpm.user')
     .directive('mlUser', [function () {
       return {
         restrict: 'EA',

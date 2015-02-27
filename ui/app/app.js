@@ -1,41 +1,44 @@
 
-angular.module('sample', [
+angular.module('mlpm', [
   'ngRoute',
   'ngCkeditor',
   'ui.bootstrap',
-  'gd.ui.jsonexplorer',
   'ml.common',
   'ml.search',
   'ml.search.tpls',
-  'ml.utils',
-  'sample.user',
-  'sample.search',
-  'sample.detail'
+  'mlpm.user',
+  'mlpm.search',
+  'mlpm.package',
+  'mlpm.docs',
+  'mlpm.home'
 ])
-  .config(['$routeProvider', '$locationProvider', 'mlMapsProvider', function ($routeProvider, $locationProvider, mlMapsProvider) {
+  .config(['$routeProvider', '$locationProvider', function ($routeProvider, $locationProvider) {
 
     'use strict';
-
-    // use google maps, version 3, with the drawing and visualization libraries
-    mlMapsProvider.useVersion(3);
-    mlMapsProvider.addLibrary('drawing');
-    mlMapsProvider.addLibrary('visualization');
 
     $locationProvider.html5Mode(true);
 
     $routeProvider
       .when('/', {
+        templateUrl: '/home/home.html',
+        controller: 'HomeCtrl'
+      })
+      .when('/search', {
         templateUrl: '/search/search.html',
         controller: 'SearchCtrl',
         reloadOnSearch: false
       })
-      .when('/detail', {
-        templateUrl: '/detail/detail.html',
-        controller: 'DetailCtrl'
+      .when('/docs', {
+        templateUrl: '/docs/docs.html',
+        controller: 'DocsCtrl'
       })
       .when('/account', {
         templateUrl: '/user/account.html',
         controller: 'AccountCtrl'
+      })
+      .when('/package/:package', {
+        templateUrl: '/package/package.html',
+        controller: 'PackageCtrl'
       })
       .otherwise({
         redirectTo: '/'

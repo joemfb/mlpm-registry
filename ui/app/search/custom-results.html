@@ -1,6 +1,6 @@
 <div ng-repeat="result in results">
   <h4>
-    <a ng-href="{{ result.link }}">{{ result.metadata[ '{http://mlpm.org/ns}name' ].values[0] }}</a>
+    <a ng-href="{{ result.link }}">{{ result.metadata[ 'mlpm:name' ].values[0] }}</a>
   </h4>
   <div class="matches">
     <div class="match" ng-repeat="match in result.matches">
