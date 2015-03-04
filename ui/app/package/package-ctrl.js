@@ -2,38 +2,22 @@
   'use strict';
 
   angular.module('mlpm.package')
-    .controller('PackageCtrl', ['$scope', 'MLRest', '$routeParams', function ($scope, mlRest, $routeParams) {
-      var uri = $routeParams.uri;
-      var model = {
-        // your model stuff here
-        detail: {}
-      };
+    .controller('PackageCtrl', PackageCtrl);
 
-      function getPackage(uri) {
-        mlRest.getDocument(uri, {
-          format: 'json',
-          transform: 'mlpm'
-        }).then(function(response) {
-          model.detail = response.data;
-        });
-      }
+  PackageCtrl.$inject = ['$scope', '$http', '$routeParams', '$sce'];
 
-      mlRest.search({
-        q: 'name:' + $routeParams.package,
-        options: 'all',
-        pageLength: 1
-      }).then(function(response) {
-        // TODO: redirect to 404 page
-        if (response.data.total !== 1) return console.log('error')
+  function PackageCtrl($scope, $http, $routeParams, $sce) {
+    var model = {
+      detail: {}
+    };
 
-        getPackage(response.data.results[0].uri)
-      })
+    $http.get('/api/package/' + $routeParams.package).then(function(response) {
+      model.detail = response.data;
+      model.readme = $sce.trustAsHtml(model.detail['parsed-readme']);
+    });
 
-
-
-      angular.extend($scope, {
-        model: model
-
-      });
-    }]);
+    angular.extend($scope, {
+      model: model
+    });
+  }
 }());

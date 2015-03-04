@@ -5,7 +5,7 @@
   <!-- display the logged in user -->
   <div class="welcome" ng-show="user.authenticated">
     <div class="navbar-collapse collapse">
-      <span class="glyphicon glyphicon-user"></span> {{user.name}} | <span class="profile-link"><a href="/account">Account</a></span>
+      <i class="fa fa-user"></i> {{user.name}} | <span class="profile-link"><a href="/account">Account</a></span>
       <button class="btn btn-default btn-xs" type="button" ng-click="logout()">Logout</button>
     </div>
   </div>

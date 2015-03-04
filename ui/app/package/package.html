@@ -1,14 +1,44 @@
 <div class="row detail">
-  <div class="col-md-12">
+  <div ng-if="!model.readme" class="col-md-12">
     <h2>{{ model.detail.name }}</h2>
   </div>
-  <div class="col-md-9">
-    <p>{{ model.detail.description }}</p>
-    <pre>{{model.detail}}</pre>
+  <div ng-if="model.readme" class="col-md-8" style="padding-right: 20px">
+    <div ng-bind-html="model.readme"></div>
   </div>
-  <div class="col-md-3">
-    <p>{{ model.detail.author }}</p>
-    <p>latest: {{ model.detail.versions[0] }}</p>
-    <p>repository: {{ model.detail.repository }}</p>
+  <div class="col-md-4"  style="height: 100%; border-left: 1px solid #ccc; margin-top: 20px; padding-top: 10px; padding-left: 20px">
+    <p>
+      <strong>{{ model.detail.name }}</strong>
+      &nbsp;&nbsp;
+      <button ng-hide="model.detail.name === 'system'" class="btn btn-default">
+        <i class="fa fa-user"></i>
+        <a href="/profile/{{ model.detail.author }}">{{ model.detail.author }}</a>
+      </button>
+    </p>
+    <p>
+      <em>{{ model.detail.description }}</em>
+    </p>
+    <p>
+      <strong>{{ model.detail.versions[ model.detail.versions.length - 1 ] }}</strong>
+      <span ng-if="model.detail.versions.length > 1">is the latest of {{ model.detail.versions.length }} versions</span>
+    </p>
+    <p><a href="{{ model.detail.repositoryLink }}" target="_blank">{{ model.detail.repositoryName }}</a></p>
+    <p>
+      <a class="btn btn-default" target="_self" ng-href="{{ model.detail.download }}" download>download package</a>
+    </p>
+    <tabset>
+      <tab heading="install">
+        <div>
+          <pre>mlpm install {{ model.detail.name }}</pre>
+        </div>
+      </tab>
+      <tab heading="maven">
+        <pre>{{ model.detail['maven-pom'] }}</pre>
+      </tab>
+      <!--
+      <tab heading="gradle">
+        <div>coming soon!</div>
+      </tab>
+      -->
+    </tabset>
   </div>
 </div>
