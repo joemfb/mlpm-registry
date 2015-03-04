@@ -1,0 +1,13 @@
+<div class="row">
+  <div><span>{{ model.detail.name }}</div>
+  <div><span><a ng-href="{{ model.detail['html-url'] }}">{{ model.detail['html-url'] }}</a></div>
+  <div><span>username: </span>{{ model.detail.username }}</div>
+  <div ng-if="model.detail.packages.length">
+    <h4>packages:</h4>
+    <ul>
+      <li ng-repeat="package in model.detail.packages">
+        <a href="/package/{{ package.name }}">{{ package.name }}</a>
+      </li>
+    </ul>
+  </div>
+</div>

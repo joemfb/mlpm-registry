@@ -109,6 +109,14 @@ declare function mlpm:find($package-name as xs:string) as element(mlpm:package)?
       cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name))), "unfiltered")
 };
 
+declare function mlpm:find-by-author($username as xs:string) as element(mlpm:package)*
+{
+  cts:search(/mlpm:package,
+    cts:and-query((
+      cts:collection-query("http://mlpm.org/ns/collection/published"),
+      cts:element-range-query(xs:QName("mlpm:author"), "=", $username))), "unfiltered")
+};
+
 declare function mlpm:find-version(
   $package-name as xs:string,
   $version as xs:string?

@@ -36,6 +36,10 @@ angular.module('mlpm', [
         templateUrl: '/user/account.html',
         controller: 'AccountCtrl'
       })
+      .when('/profile/:user', {
+        templateUrl: '/user/profile.html',
+        controller: 'ProfileCtrl'
+      })
       .when('/package/:package', {
         templateUrl: '/package/package.html',
         controller: 'PackageCtrl'
