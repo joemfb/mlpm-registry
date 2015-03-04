@@ -4,6 +4,9 @@ module namespace mlpm = "http://mlpm.org/ns";
 
 import module namespace json="http://marklogic.com/xdmp/json" at "/MarkLogic/json/json.xqy";
 
+declare namespace xsi = "http://www.w3.org/2001/XMLSchema-instance";
+declare namespace mvn ="http://maven.apache.org/POM/4.0.0";
+
 declare variable $mlpm:doc-permissions := (
   xdmp:permission("mlpm-registry-role", "read"),
   xdmp:permission("mlpm-registry-writer-role", "update")
@@ -185,9 +188,12 @@ declare function mlpm:resolve(
 
 declare function mlpm:get-archive-uri($mlpm as element(mlpm:package-version)) as xs:string
 {
-  let $package-name := $mlpm/mlpm:name/fn:string()
-  let $dir := mlpm:version-dir($package-name, $mlpm/mlpm:version/fn:string())
-  return $dir || $package-name || ".zip"
+  mlpm:version-dir($mlpm) || $mlpm/mlpm:name || ".zip"
+};
+
+declare function mlpm:version-dir($mlpm as element(mlpm:package-version)) as xs:string
+{
+  mlpm:version-dir($mlpm/mlpm:name, $mlpm/mlpm:version)
 };
 
 declare function mlpm:version-dir(
@@ -404,4 +410,46 @@ declare private function mlpm:unpublish-uri($uri as xs:string)
     xdmp:document-get-collections($uri)[. ne "http://mlpm.org/ns/collection/published"]
   )
   return xdmp:document-set-collections($uri, $collections)
+};
+
+declare function mlpm:maven-pom($package as element(mlpm:package)) as element(mvn:project)
+{
+  mlpm:maven-pom($package, $package/mlpm:versions/mlpm:version[fn:last()])
+};
+
+declare function mlpm:maven-pom($package as element(mlpm:package), $version as xs:string) as element(mvn:project)
+{
+  let $group-id := "com.mlpm." || ($package/mlpm:author/fn:string(), "system")[1]
+  let $artifact-id := $package/mlpm:name/fn:string()
+  return
+    element mvn:project {
+      attribute xsi:schemaLocation { "http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" },
+      element mvn:modelVersion { "4.0.0" },
+      element mvn:groupId { $group-id },
+      element mvn:artifactId { $artifact-id },
+      element mvn:version { $version },
+      element mvn:packaging { "zip" }
+    }
+};
+
+declare function mlpm:maven-metadata($package as element(mlpm:package)) as element(metadata)
+{
+  let $group-id := "com.mlpm." || ($package/mlpm:author/fn:string(), "system")[1]
+  let $artifact-id := $package/mlpm:name/fn:string()
+  (: TODO: fn:last() ? :)
+  let $version := $package/mlpm:versions/mlpm:version[1]/fn:string()
+  let $last-updated := fn:format-dateTime( xs:dateTime($package/mlpm:time/mlpm:modified), "[Y][M01][D01][H01][m][s][f]")
+  return
+    element metadata {
+      element groupId { $group-id },
+      element artifactId { $artifact-id },
+      element version { $version },
+      element versioning {
+        element versions {
+          for $v in $package/mlpm:versions/mlpm:version
+          return element version { $v/fn:string() }
+        },
+        element lastUpdated { $last-updated }
+      }
+    }
 };

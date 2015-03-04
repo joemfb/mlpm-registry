@@ -22,7 +22,7 @@ function ext:get(
     then (
       map:put($context, "output-status", (200, "Ok")),
       map:put($context, "output-types", xdmp:uri-content-type($package/fn:base-uri())),
-      xdmp:add-response-header("Content-Disposition", "attachment;filename=" || $package-name || ".zip"),
+      xdmp:add-response-header("Content-Disposition", "attachment;filename=" || $package-name || "-" || $version || ".zip"),
       fn:doc(mlpm:get-archive-uri($package))
     )
     else

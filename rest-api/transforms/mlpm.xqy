@@ -13,6 +13,19 @@ declare function trns:transform(
 ) as document-node()
 {
   document {
-   xdmp:to-json( mlpm:to-json($content/*) )
+    let $json := mlpm:to-json($content/mlpm:package)
+    let $_ :=
+      let $pom := mlpm:maven-pom($content/mlpm:package)
+      where fn:exists($pom)
+      return
+        map:put($json, "maven-pom",
+          xdmp:quote(
+            <dependency xmlns="http://maven.apache.org/POM/4.0.0">{
+              $pom/(groupId|artifactId|version)
+            }</dependency>,
+            <options xmlns="xdmp:quote">
+              <indent-untyped>yes</indent-untyped>
+            </options>))
+    return xdmp:to-json( $json )
   }
 };

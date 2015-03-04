@@ -95,21 +95,22 @@ function buildExpress(options) {
     };
   }
 
-  // TODO:
-  //   proxy all requests with rest-reader only
-  //   (so no API methods need to be session-protected)
+  function proxyUrl(path) {
+    return url.format({
+      protocol: 'http:',
+      port: options.mlPort,
+      hostname: options.mlHost,
+      pathname: path
+    });
+  }
+
   function proxyConfig(req) {
     return {
-      url: url.format({
-        protocol: 'http:',
-        port: options.mlPort,
-        hostname: options.mlHost,
-        pathname: req.path
-      }),
+      url: proxyUrl(req.path),
       method: req.method,
       headers: req.headers,
       qs: req.query,
-      auth: isTokenAuth(req) ? getPrivilegedAuth() : getAuth(req.session)
+      auth: isTokenAuth(req) ? getPrivilegedAuth() : getAuth(req.session || {})
     };
   }
 
@@ -140,12 +141,7 @@ function buildExpress(options) {
 
   function createOrUpdateUser(user, cb) {
     request({
-      url: url.format({
-        protocol: 'http:',
-        port: options.mlPort,
-        hostname: options.mlHost,
-        pathname: '/v1/resources/user'
-      }),
+      url: proxyUrl('/v1/resources/user'),
       method: 'POST',
       json: user,
       auth: getPrivilegedAuth()
@@ -191,6 +187,24 @@ function buildExpress(options) {
     delete req.session.user;
     //TODO: send response?
     res.send();
+  });
+
+  app.get('/maven*', function(req, res) {
+    var config = {};
+
+    req.query['rs:path'] = req.path.replace(/^\/maven/, '');
+
+    config = proxyConfig({
+      path: '/v1/resources/maven',
+      method: req.method,
+      headers: req.headers,
+      query: req.query,
+      session: req.session
+    });
+
+    config.followRedirects = true;
+
+    req.pipe( request(config) ).pipe( res );
   });
 
   function defaultProxy(req, res) {
