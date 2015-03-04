@@ -6,6 +6,7 @@ import module namespace json="http://marklogic.com/xdmp/json" at "/MarkLogic/jso
 
 declare namespace xsi = "http://www.w3.org/2001/XMLSchema-instance";
 declare namespace mvn ="http://maven.apache.org/POM/4.0.0";
+declare namespace zip = "xdmp:zip";
 
 declare variable $mlpm:doc-permissions := (
   xdmp:permission("mlpm-registry-role", "read"),
@@ -41,6 +42,17 @@ declare function mlpm:to-json($xml as element()) as json:object
       map:put($json, "versions",
        json:to-array(
          $xml/mlpm:versions/descendant-or-self::mlpm:*[fn:not(*)]/fn:string()))
+    else (),
+
+    (: handle readme :)
+    if (map:contains($json, "parsed-readme"))
+    then
+      map:put($json, "parsed-readme",
+        xdmp:quote(
+          $xml/mlpm:parsed-readme/node(),
+          <options xmlns="xdmp:quote">
+            <indent-untyped>yes</indent-untyped>
+          </options>))
     else ()
   )
   return $json
@@ -85,6 +97,8 @@ declare function mlpm:to-xml($json) as element()+
                   map:entry("semver",
                     map:entry("_value", map:get($deps, $dep)))))))))
     else map:delete($json, "dependencies")
+
+    (: TODO: handle readme? :)
 
   return json:transform-from-json($json, $conf)
 };
@@ -288,28 +302,57 @@ declare function mlpm:publish(
     else
       if (mlpm:unpublished-version-exists($package-name, $version))
       then fn:error(xs:QName("UNPUBLISHED-EXISTS"), "unpublished version exists", ($package-name, $version))
-      else (
-        mlpm:save-version($mlpm, $input),
-        mlpm:save-package( mlpm:update-package($mlpm, $username) )
-      )
+      else
+        let $readme := mlpm:extract-readme($input)
+        return (
+          mlpm:save-version($mlpm, $input),
+          mlpm:save-package( mlpm:update-package($mlpm, $username, $readme) )
+        )
   )
+};
+
+declare function mlpm:extract-zip-text($input as document-node(), $part as xs:string) as document-node()?
+{
+  let $x := xdmp:zip-get($input, $part)
+  where fn:exists($x)
+  return
+    if ($x/node() instance of binary())
+    then document { xdmp:binary-decode($x, "UTF-8") }
+    else $x
+};
+
+declare function mlpm:extract-readme($input as document-node()) as document-node()?
+{
+  for $part in xdmp:zip-manifest($input)/zip:part
+  where fn:matches($part, "README(\.(md|mdown))?")
+  return mlpm:extract-zip-text($input, $part)
 };
 
 declare function mlpm:update-package(
   $mlpm as json:object,
   $username as xs:string
 ) as json:object
+{ mlpm:update-package($mlpm, $username, ()) };
+
+declare function mlpm:update-package(
+  $mlpm as json:object,
+  $username as xs:string,
+  $readme as xs:string?
+) as json:object
 {
   let $package-name :=  map:get($mlpm, "name")
   let $version := map:get($mlpm, "version")
   let $doc := mlpm:find($package-name)
+  let $clone := mlpm:json-clone($mlpm, ("version", "readme"))
   let $mlpm :=
     if ($doc)
     then
       let $old := mlpm:to-json($doc)
       return
         map:new((
-          mlpm:json-clone($mlpm, "version"),
+          $old,
+          $clone,
+          map:entry("readme", $readme),
           map:entry("versions", json:to-array((
             json:array-values(map:get($old, "versions")),
             $version
@@ -323,8 +366,9 @@ declare function mlpm:update-package(
       let $author := (map:get($mlpm, "author"), $username)[1]
       return
         map:new((
-          mlpm:json-clone($mlpm, "version"),
+          $clone,
           map:entry("author", $author),
+          map:entry("readme", $readme),
           map:entry("versions", json:to-array($version)),
           map:entry("created", fn:current-dateTime()),
           map:entry("time", map:new((
@@ -367,8 +411,36 @@ declare function mlpm:save-version(
       element mlpm:package-version { mlpm:to-xml($mlpm) },
       $mlpm:doc-permissions,
       ("http://mlpm.org/ns/collection/published",
-      "http://mlpm.org/ns/collection/package-version"))
+      "http://mlpm.org/ns/collection/package-version")),
+    mlpm:save-version-contents($input, $dir)
   )
+};
+
+declare function mlpm:save-version-contents(
+  $input as document-node(),
+  $dir as xs:string
+)
+{
+  for $part in xdmp:zip-manifest($input)/zip:part
+  let $uri := $dir || "contents/" || $part
+  let $file-contents := mlpm:extract-zip-text($input, $part)
+  return
+    xdmp:document-insert($uri,
+      $file-contents,
+      $mlpm:doc-permissions,
+      ("http://mlpm.org/ns/collection/package-contents"))
+};
+
+declare function mlpm:save-readme($mlpm as element(mlpm:package-version), $readme as xs:string?)
+{
+  if (fn:not(fn:exists($readme))) then ()
+  else
+    let $package := mlpm:find($mlpm/mlpm:name)
+    let $fn :=
+      if (fn:exists($package/mlpm:readme))
+      then xdmp:node-replace($package/mlpm:readme, ?)
+      else xdmp:node-insert-child($package, ?)
+    return $fn(element mlpm:readme { $readme })
 };
 
 declare function mlpm:unpublish(

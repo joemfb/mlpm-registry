@@ -8,8 +8,15 @@ var express = require('express'),
     expressSession = require('express-session'),
     request = require('request'),
     url = require('url'),
-    GitHubStrategy = require('passport-github2').Strategy;
+    GitHubStrategy = require('passport-github2').Strategy,
+    MarkdownIt = require('markdown-it'),
+    md = new MarkdownIt({
+      html: true,
+      xhtmlOut: true,
+      linkify: true
+    });
 
+// auth parser fns
 function basicAuth(req) {
   var auth64, credentials, index;
 
@@ -73,6 +80,14 @@ function buildExpress(options) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  passport.use(new GitHubStrategy(options.githubSettings,
+    function(accessToken, refreshToken, profile, done) {
+      //TODO: save gh tokens?
+      createOrUpdateUser(profile, done);
+    }
+  ));
+
+  // auth fns
   function getAuth(session) {
     var auth = { sendImmediately: false };
 
@@ -95,6 +110,7 @@ function buildExpress(options) {
     };
   }
 
+  // proxy fns
   function proxyUrl(path) {
     return url.format({
       protocol: 'http:',
@@ -114,7 +130,6 @@ function buildExpress(options) {
     };
   }
 
-  // Generic proxy function used by multiple HTTP verbs
   function proxy(req) {
     var config = proxyConfig(req);
 
@@ -139,6 +154,11 @@ function buildExpress(options) {
     proxy(req).pipe(res);
   }
 
+  function defaultProxy(req, res) {
+    proxy(req).pipe(res);
+  }
+
+  // "model" fns
   function createOrUpdateUser(user, cb) {
     request({
       url: proxyUrl('/v1/resources/user'),
@@ -150,13 +170,77 @@ function buildExpress(options) {
     });
   }
 
-  passport.use(new GitHubStrategy(options.githubSettings,
-    function(accessToken, refreshToken, profile, done) {
-      //TODO: save gh tokens?
-      createOrUpdateUser(profile, done);
-    }
-  ));
+  function findPackagebyName(req, cb) {
+    var config = proxyConfig({
+      path: '/v1/search',
+      headers: req.headers,
+      query: {
+        q: 'name:' + req.params.package,
+        format: 'json',
+        options: 'all'
+      },
+      session: req.session
+    });
 
+    config.json = true;
+
+    request(config, function (error, response, body)  {
+      if (error) return cb(error);
+      cb(null, body);
+    });
+  }
+
+  function saveRenderedMarkdown(uri, rendered) {
+    request({
+      url: proxyUrl('/v1/resources/save-readme-markdown'),
+      method: 'POST',
+      headers: { 'Content-type': 'text/html' },
+      qs: { 'rs:uri': uri },
+      body: rendered,
+      auth: getPrivilegedAuth()
+    }, function (error, response, body)  {
+      if (error) return console.log(error);
+
+      console.log('saved markdown for ' + uri);
+    });
+  }
+
+  function getPackage(req, uri, cb) {
+    var config = proxyConfig({
+        path: '/v1/documents',
+        headers: req.headers,
+        query: {
+          uri: uri,
+          format: 'json',
+          transform: 'mlpm'
+        },
+        session: req.session
+      });
+
+    config.json = true;
+
+    request(config, function (error, response, body)  {
+      if (error) return cb(error);
+
+      body.download = '/v1/resources/download?rs:package=' + body.name +
+                      '&rs:version=' + body.versions[0];
+
+      if ( body.repository ) {
+        body.repositoryName = body.repository.replace(/^https?:\/\//, '').replace(/\.git$/, '');
+        body.repositoryLink = body.repository.replace(/\.git$/, '');
+      }
+
+      if ( body.readme ) {
+        body['parsed-readme'] = md.render( body.readme );
+        //async, deliberately ignore result
+        saveRenderedMarkdown( uri, body['parsed-readme'] );
+      }
+
+      cb(null, body);
+    });
+  }
+
+  // routes
   app.get('/auth/github',
     passport.authenticate('github', { scope: [ 'user:email' ] }),
     function(req, res){
@@ -189,6 +273,27 @@ function buildExpress(options) {
     res.send();
   });
 
+  app.get('/api/package/:package', function(req, res) {
+    findPackagebyName(req, function(err, data) {
+      if (err) {
+        console.log(err);
+        return res.send(500, 'error');
+      }
+
+      if (data.total === 0) return res.send(404, 'Not Found');
+      if (data.total > 1)   return res.send(500, 'duplicate packages');
+
+      getPackage( req, data.results[0].uri, function(err, packageData) {
+        if (err) {
+          console.log(err);
+          return res.send(500, 'error');
+        }
+        res.send(200, packageData);
+      });
+
+    });
+  });
+
   app.get('/maven*', function(req, res) {
     var config = {};
 
@@ -206,10 +311,6 @@ function buildExpress(options) {
 
     req.pipe( request(config) ).pipe( res );
   });
-
-  function defaultProxy(req, res) {
-    proxy(req).pipe(res);
-  }
 
   // ==================================
   // MarkLogic REST API endpoints

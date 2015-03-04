@@ -21,9 +21,13 @@ function ext:get(
     if (fn:exists($package))
     then (
       map:put($context, "output-status", (200, "Ok")),
-      document {
-        xdmp:to-json( mlpm:to-json($package) )
-      }
+
+      let $json := mlpm:to-json($package)
+      return (
+        map:delete($json, "readme"),
+        map:delete($json, "parsed-readme"),
+        document { xdmp:to-json( $json ) }
+      )
     )
     else
       if (mlpm:unpublished-exists($package-name))
