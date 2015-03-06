@@ -317,14 +317,17 @@ declare function mlpm:extract-zip-text($input as document-node(), $part as xs:st
   where fn:exists($x)
   return
     if ($x/node() instance of binary())
-    then document { xdmp:binary-decode($x, "UTF-8") }
+    then
+      if (xdmp:binary-size($x/node()) gt 0)
+      then document { xdmp:binary-decode($x, "UTF-8") }
+      else ()
     else $x
 };
 
 declare function mlpm:extract-readme($input as document-node()) as document-node()?
 {
   for $part in xdmp:zip-manifest($input)/zip:part
-  where fn:matches($part, "README(\.(md|mdown))?")
+  where fn:matches($part, "^README(\.(md|mdown))?")
   return mlpm:extract-zip-text($input, $part)
 };
 
@@ -424,6 +427,7 @@ declare function mlpm:save-version-contents(
   for $part in xdmp:zip-manifest($input)/zip:part
   let $uri := $dir || "contents/" || $part
   let $file-contents := mlpm:extract-zip-text($input, $part)
+  where fn:exists($file-contents)
   return
     xdmp:document-insert($uri,
       $file-contents,

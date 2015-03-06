@@ -9,7 +9,7 @@
     <p>
       <strong>{{ model.detail.name }}</strong>
       &nbsp;&nbsp;
-      <button ng-hide="model.detail.name === 'system'" class="btn btn-default">
+      <button ng-hide="model.detail.author === 'system'" class="btn btn-default">
         <i class="fa fa-user"></i>
         <a href="/profile/{{ model.detail.author }}">{{ model.detail.author }}</a>
       </button>
