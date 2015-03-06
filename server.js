@@ -110,6 +110,14 @@ function buildExpress(options) {
     };
   }
 
+  function chooseAuth(req, forcePrivileged) {
+    if ( forcePrivileged || isTokenAuth(req) ) {
+      return getPrivilegedAuth();
+    } else {
+      return getAuth(req.session || {});
+    }
+  }
+
   // proxy fns
   function proxyUrl(path) {
     return url.format({
@@ -120,18 +128,18 @@ function buildExpress(options) {
     });
   }
 
-  function proxyConfig(req) {
+  function proxyConfig(req, forcePrivileged) {
     return {
       url: proxyUrl(req.path),
       method: req.method,
       headers: req.headers,
       qs: req.query,
-      auth: isTokenAuth(req) ? getPrivilegedAuth() : getAuth(req.session || {})
+      auth: chooseAuth(req, forcePrivileged)
     };
   }
 
-  function proxy(req) {
-    var config = proxyConfig(req);
+  function proxy(req, forcePrivileged) {
+    var config = proxyConfig(req, forcePrivileged);
 
     if (req.body !== undefined) {
       if ( req.headers['content-type'] === 'application/zip' ) {
@@ -144,7 +152,7 @@ function buildExpress(options) {
     return req.pipe( request(config) );
   }
 
-  function privilegedProxy(req, res) {
+  function cmdLineProxy(req, res) {
     if ( isTokenAuth(req) ) {
       req.query['rs:token'] = tokenAuth(req).token;
     } else {
@@ -152,6 +160,10 @@ function buildExpress(options) {
     }
 
     proxy(req).pipe(res);
+  }
+
+  function privilegedProxy(req, res) {
+    proxy(req, true).pipe(res);
   }
 
   function defaultProxy(req, res) {
@@ -254,8 +266,10 @@ function buildExpress(options) {
       res.redirect('/account');
     });
 
-  app.put('/v1/resources/publish', privilegedProxy);
-  app.delete('/v1/resources/publish', privilegedProxy);
+  app.post('/v1/resources/system-packages', privilegedProxy);
+
+  app.put('/v1/resources/publish', cmdLineProxy);
+  app.delete('/v1/resources/publish', cmdLineProxy);
 
   // TODO: rewrite user handling
   // /user/status retrieves user from ML by id
