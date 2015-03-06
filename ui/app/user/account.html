@@ -1,10 +1,39 @@
 <div class="row" ng-show="model.user.authenticated">
-  <h2>account info</h2>
-  <div><span>{{ model.user.name }}</div>
-  <div><span><a ng-href="{{ model.user['github-data']['html-url'] }}">{{ model.user['github-data']['html-url'] }}</a></div>
-  <div><span>username: </span>{{ model.user.username }}</div>
-  <div>
-    <span>login command:</span>
-    <pre style="width:400px">mlpm login {{ model.user.token }}</pre>
+  <div class="col-md-12">
+    <h2>account info</h2>
+    <p>
+      {{ model.user.name }}<br>
+      <span>username: </span>{{ model.user.username }}
+    </p>
+  </div>
+  <div class="col-md-12">
+    <p>
+      <a ng-href="/profile/{{ model.user.username }}">public profile</a>
+      <br>
+      <a ng-href="{{ model.user['github-data']['html-url'] }}">{{ model.user['github-data']['html-url'] }}</a>
+    </p>
+  </div>
+  <div class="col-md-12">
+    <button ng-click="showLogin = true" ng-hide="showLogin" class="btn btn-default btn-sm">show login command</button>
+    <button ng-click="showLogin = false" ng-show="showLogin" class="btn btn-default btn-sm">hide login command</button>
+    <br/>
+    <br/>
+    <pre ng-show="showLogin" style="width:400px">mlpm login {{ model.user.token }}</pre>
+  </div>
+  <div ng-if="model.alerts.length" class="col-md-5">
+    <alert ng-repeat="alert in model.alerts" type="{{ alert.type }}" close="closeAlert($index)">{{ alert.msg }}</alert>
+  </div>
+  <div ng-if="model.systemPackages.length" class="col-md-12">
+    <h3>claim system packages</h3>
+    <p>You appear to be their owner of these packages, which were pre-loaded into the registry:</p>
+    <ul>
+      <li ng-repeat="package in model.systemPackages">
+        <span>
+          <strong>{{ package.name }}</strong>
+          <em ng-if="package.repo">({{ package.repo }})</em>
+        </span>
+        <button ng-click="claimPackage(package)" class="btn btn-default btn-xs">claim</button>
+      </li>
+    </ul>
   </div>
 </div>
