@@ -26,6 +26,12 @@ declare function trns:transform(
             <options xmlns="xdmp:quote">
               <indent-untyped>yes</indent-untyped>
             </options>))
+    let $_ :=
+      map:put($json, "dependants",
+        json:to-array(
+          for $dependant in mlpm:find-dependants( $content/mlpm:package/mlpm:name )/mlpm:name
+          order by $dependant
+          return $dependant/fn:string()))
     return xdmp:to-json( $json )
   }
 };

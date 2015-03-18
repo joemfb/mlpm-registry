@@ -14,6 +14,9 @@
     $http.get('/api/package/' + $routeParams.package).then(function(response) {
       model.detail = response.data;
       model.readme = $sce.trustAsHtml(model.detail['parsed-readme']);
+      model.detail.dependencies = _.map(model.detail.dependencies, function(version, dependency) {
+        return { version: version, name: dependency };
+      });
     });
 
     angular.extend($scope, {

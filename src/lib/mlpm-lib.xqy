@@ -131,6 +131,14 @@ declare function mlpm:find-by-author($username as xs:string) as element(mlpm:pac
       cts:element-range-query(xs:QName("mlpm:author"), "=", $username))), "unfiltered")
 };
 
+declare function mlpm:find-dependants($package-name as xs:string) as element(mlpm:package)*
+{
+  cts:search(/mlpm:package,
+    cts:and-query((
+      cts:collection-query("http://mlpm.org/ns/collection/published"),
+      cts:element-range-query(xs:QName("mlpm:package-name"), "=", $package-name))), "unfiltered")
+};
+
 declare function mlpm:find-version(
   $package-name as xs:string,
   $version as xs:string?
@@ -513,6 +521,7 @@ declare function mlpm:maven-pom($package as element(mlpm:package), $version as x
       element mvn:artifactId { $artifact-id },
       element mvn:version { $version },
       element mvn:packaging { "zip" }
+      (: TODO: mvn:dependencies :)
     }
 };
 

@@ -25,6 +25,23 @@
     <p>
       <a class="btn btn-default" target="_self" ng-href="{{ model.detail.download }}" download>download package</a>
     </p>
+    <div ng-if="model.detail.dependencies.length">
+      <hr>
+      <span><em>depends</em> on</span>
+      <span ng-repeat="dependency in model.detail.dependencies">
+        <span ng-if="$last &amp;&amp; model.detail.dependencies.length > 2">and</span>
+        <a href="/package/{{ dependency.name }}">{{ dependency.name }}</a><span ng-if="!$last">,</span>
+      </span>
+    </div>
+    <div ng-if="model.detail.dependants.length">
+      <hr>
+      <span><em>depended-on</em> by</span>
+      <span ng-repeat="dependant in model.detail.dependants">
+        <span ng-if="$last &amp;&amp; model.detail.dependants.length > 2">and</span>
+        <a href="/package/{{ dependant }}">{{ dependant }}</a><span ng-if="!$last">,</span>
+      </span>
+    </div>
+    <hr>
     <tabset>
       <tab heading="install">
         <div>
