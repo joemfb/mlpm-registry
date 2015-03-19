@@ -511,6 +511,15 @@ declare function mlpm:maven-pom($package as element(mlpm:package)) as element(mv
 
 declare function mlpm:maven-pom($package as element(mlpm:package), $version as xs:string) as element(mvn:project)
 {
+  mlpm:maven-pom($package, $version, fn:true())
+};
+
+declare function mlpm:maven-pom(
+  $package as element(mlpm:package),
+  $version as xs:string,
+  $resolve-deps as xs:boolean
+) as element(mvn:project)
+{
   let $group-id := "com.mlpm." || ($package/mlpm:author/fn:string(), "system")[1]
   let $artifact-id := $package/mlpm:name/fn:string()
   return
@@ -520,8 +529,22 @@ declare function mlpm:maven-pom($package as element(mlpm:package), $version as x
       element mvn:groupId { $group-id },
       element mvn:artifactId { $artifact-id },
       element mvn:version { $version },
-      element mvn:packaging { "zip" }
-      (: TODO: mvn:dependencies :)
+      element mvn:packaging { "zip" },
+      if ($resolve-deps)
+      then
+        element mvn:dependencies {
+          for $dep in $package/mlpm:dependencies/mlpm:dependency
+          return
+            element mvn:dependency {
+              mlpm:maven-pom(
+                mlpm:find( $dep/mlpm:package-name ),
+                (: TODO: resolve version :)
+                $dep/mlpm:semver,
+                fn:false())
+                /(mvn:groupId|mvn:artifactId|mvn:version)
+            }
+        }[./*]
+      else ()
     }
 };
 
