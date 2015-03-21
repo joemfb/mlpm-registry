@@ -1,11 +1,9 @@
 <div class="row detail">
-  <div ng-if="!model.readme" class="col-md-12">
-    <h2>{{ model.detail.name }}</h2>
-  </div>
-  <div ng-if="model.readme" class="col-md-8" style="padding-right: 20px">
+  <div ng-if="model.readme" ng-class="{ true: 'col-md-12', false: 'col-md-8' }[model.shortReadme]" class="readme">
     <div ng-bind-html="model.readme"></div>
+    <hr ng-if="model.shortReadme">
   </div>
-  <div class="col-md-4"  style="height: 100%; border-left: 1px solid #ccc; margin-top: 20px; padding-top: 10px; padding-left: 20px">
+  <div class="col-md-4" ng-class="{false: 'package-sidebar'}[model.shortReadme]">
     <p>
       <strong>{{ model.detail.name }}</strong>
       &nbsp;&nbsp;
@@ -21,7 +19,9 @@
       <strong>{{ model.detail.versions[ model.detail.versions.length - 1 ] }}</strong>
       <span ng-if="model.detail.versions.length > 1">is the latest of {{ model.detail.versions.length }} versions</span>
     </p>
-    <p><a href="{{ model.detail.repositoryLink }}" target="_blank">{{ model.detail.repositoryName }}</a></p>
+    <p>
+      <a href="{{ model.detail.repositoryLink }}" target="_blank">{{ model.detail.repositoryName }}</a>
+    </p>
     <p>
       <a class="btn btn-default" target="_self" ng-href="{{ model.detail.download }}" download>download package</a>
     </p>
