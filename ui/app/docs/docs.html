@@ -35,6 +35,10 @@
 
 <p>To publish/unpublish packages, login with your github account, then run <code>mlpm login</code> with your mlpm registry API token (available on your account page).</p>
 
+<h4>deployment</h4>
+
+<p>To deploy with <a href="https://github.com/marklogic/roxy">Roxy</a>, use <a href="https://gist.github.com/joemfb/c786696f459290e57c73">this gist</a> as your <code>deploy/app_specific.rb</code>; it adds package deployment and undeployment to the following built-in commands: <code>./ml &lt;env&gt; deploy modules</code> and <code>./ml &lt;env&gt; clean modules</code>. Full integration with Roxy is being discussed <a href="https://github.com/marklogic/roxy/issues/357">here</a>.</p>
+
 <h4>maven / gradle</h4>
 
 <p>This registry provides a maven / gradle repository of all packages at <a href="/maven">{{ model.origin }}/maven</a>.</p>
