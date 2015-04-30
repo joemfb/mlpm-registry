@@ -16,14 +16,14 @@ function ext:get(
   map:put($context, "output-types", "application/json"),
 
   let $package-name := map:get($params, "package")
-  let $version := map:get($params, "version")
-  let $package := mlpm:find-version($package-name, $version)
+  let $semver := map:get($params, "version")
+  let $package-version := mlpm:find-semver($package-name, $semver)
   return
-    if (fn:exists($package))
+    if (fn:exists($package-version))
     then (
       map:put($context, "output-status", (200, "Ok")),
       document {
-       xdmp:to-json( mlpm:resolve($package) )
+       xdmp:to-json( mlpm:resolve($package-version) )
       }
     )
     else

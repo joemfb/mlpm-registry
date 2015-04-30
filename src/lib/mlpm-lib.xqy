@@ -141,25 +141,46 @@ declare function mlpm:find-dependants($package-name as xs:string) as element(mlp
 
 declare function mlpm:find-version(
   $package-name as xs:string,
-  $version as xs:string?
+  $version as xs:string
 ) as element(mlpm:package-version)?
 {
-  if (fn:not($version) or $version eq "latest")
-  then (
-    for $x in
+  cts:search(/mlpm:package-version,
+    cts:and-query((
+      cts:collection-query("http://mlpm.org/ns/collection/published"),
+      cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name),
+      cts:element-range-query(xs:QName("mlpm:version"), "=", $version))), "unfiltered")
+};
+
+declare function mlpm:semver-latest($name as xs:string, $semver as xs:string) as xs:string?
+{
+  if (fn:matches($semver, "^\d+\.\d+.\d+$"))
+  then $semver
+  else
+    cts:value-match(
+      cts:element-reference(xs:QName("mlpm:version")),
+      fn:replace( fn:replace($semver, "x", "*"), "\*.*$", "*" ),
+      "descending",
+      cts:element-query(xs:QName("mlpm:package"),
+        cts:element-range-query(xs:QName("mlpm:name"), "=", $name)))[1]
+};
+
+declare function mlpm:find-semver(
+  $package-name as xs:string,
+  $semver as xs:string
+) as element(mlpm:package-version)?
+{
+  let $latest-semver-match := mlpm:semver-latest($package-name, $semver)
+  return
+    if (fn:empty($latest-semver-match))
+    then ()
+    else
       cts:search(/mlpm:package-version,
         cts:and-query((
           cts:collection-query("http://mlpm.org/ns/collection/published"),
-          cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name))), "unfiltered")
-    order by $x/mlpm:created descending
-    return $x
-  )[1]
-  else
-    cts:search(/mlpm:package-version,
-      cts:and-query((
-        cts:collection-query("http://mlpm.org/ns/collection/published"),
-        cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name),
-        cts:element-range-query(xs:QName("mlpm:version"), "=", $version))), "unfiltered")
+          cts:element-range-query(xs:QName("mlpm:name"), "=", $package-name),
+          cts:element-range-query(xs:QName("mlpm:version"), "=", $latest-semver-match)
+        )),
+        "unfiltered")
 };
 
 declare function mlpm:unpublished-exists($package-name as xs:string) as xs:boolean
@@ -206,7 +227,7 @@ declare function mlpm:resolve(
     then
       let $deps := json:to-array((
         for $dep in $mlpm/mlpm:dependencies/*
-        let $dep-mlpm := mlpm:find-version($dep/mlpm:package-name/fn:string(), $dep/mlpm:semver/fn:string())
+        let $dep-mlpm := mlpm:find-semver($dep/mlpm:package-name/fn:string(), $dep/mlpm:semver/fn:string())
         let $dep-path := $path || "/" || $package-name || "/mlpm_modules"
         return mlpm:resolve($dep-mlpm, $dep-path)
       ))
@@ -240,7 +261,7 @@ declare function mlpm:assert-valid-deps($deps as map:map?) as empty-sequence()
   then
     for $dep in map:keys($deps)
     let $semver := map:get($deps, $dep)
-    let $exists := fn:exists(mlpm:find-version($dep, $semver))
+    let $exists := fn:exists(mlpm:find-semver($dep, $semver))
     return
       if ($exists) then ()
       else fn:error(xs:QName("MISSING-DEPENDENCY"), "dependency doesn't exist", $dep || "@" || $semver)
