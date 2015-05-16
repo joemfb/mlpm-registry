@@ -11,7 +11,7 @@ declare namespace error = "http://marklogic.com/xdmp/error";
 declare option xdmp:mapping "false";
 
 declare
-  %roxy:params("token=xs:string")
+  %roxy:params("token=xs:string", "sha2sum=xs:string?")
 function ext:put(
     $context as map:map,
     $params  as map:map,
@@ -23,9 +23,26 @@ function ext:put(
 
   let $token := map:get($params, "token")
   let $user := user:find-by-token($token)
+
+  let $sha2sum := map:get($params, "sha2sum")
+
+  (: TODO: at some future point, rewrite to require sha2sum :)
+  let $_ :=
+    if (fn:not($sha2sum))
+    (: TODO: get name :)
+    then xdmp:log("missing sha2sum")
+    else
+      if (xdmp:host-get-ssl-fips-enabled(xdmp:host())) then ()
+      else
+        let $actual := xdmp:sha256($input/binary())
+        return
+          if ($actual eq $sha2sum) then ()
+          else fn:error((), "SHA2SUM-MISMATCH", "expected " || $sha2sum || "; got " || $actual)
+
   return
     try {
       map:put($context, "output-status", (200, "Ok")),
+      (: TODO: include sha2sum :)
       mlpm:publish($input, $user/user:username)
     }
     catch($ex) {
