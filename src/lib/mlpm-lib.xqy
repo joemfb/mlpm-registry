@@ -151,9 +151,19 @@ declare function mlpm:find-version(
       cts:element-range-query(xs:QName("mlpm:version"), "=", $version))), "unfiltered")
 };
 
+declare function mlpm:semver-is-specific-release($semver)
+{
+  fn:matches($semver, "^\d+\.\d+\.\d+$")
+};
+
+declare function mlpm:semver-is-prerelease($semver)
+{
+  fn:matches($semver, "^\d+\.\d+\.\d+-.*$")
+};
+
 declare function mlpm:semver-latest($name as xs:string, $semver as xs:string) as xs:string?
 {
-  if (fn:matches($semver, "^\d+\.\d+.\d+$"))
+  if (mlpm:semver-is-specific-release($semver) or mlpm:semver-is-prerelease($semver))
   then $semver
   else
     cts:value-match(
@@ -161,7 +171,11 @@ declare function mlpm:semver-latest($name as xs:string, $semver as xs:string) as
       fn:replace( fn:replace($semver, "x", "*"), "\*.*$", "*" ),
       "descending",
       cts:element-query(xs:QName("mlpm:package"),
-        cts:element-range-query(xs:QName("mlpm:name"), "=", $name)))[1]
+        cts:and-query((
+          cts:not-query(
+            (: TODO:  cts:element-query(xs:QName("mlpm:prerelease"), cts:and-query(())) ? :)
+            cts:element-value-query(xs:QName("mlpm:prerelease"), "true")),
+          cts:element-range-query(xs:QName("mlpm:name"), "=", $name)))))[1]
 };
 
 declare function mlpm:find-semver(
@@ -430,6 +444,10 @@ declare function mlpm:save-version(
   let $package-name :=  map:get($mlpm, "name")
   let $version := map:get($mlpm, "version")
   let $dir := mlpm:version-dir($package-name, $version)
+  let $_ :=
+    if (mlpm:semver-is-prerelease($version))
+    then map:put($mlpm, "prerelease", "true")
+    else ()
   return (
     map:put($mlpm, "created", fn:current-dateTime()),
     xdmp:document-insert(
