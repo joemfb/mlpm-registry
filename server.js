@@ -149,7 +149,11 @@ function buildExpress(options) {
       }
     }
 
-    return req.pipe( request(config) );
+    return req.pipe( request(config).on('error', handleErr) );
+  }
+
+  function handleErr() {
+    console.log(arguments)
   }
 
   function cmdLineProxy(req, res) {
