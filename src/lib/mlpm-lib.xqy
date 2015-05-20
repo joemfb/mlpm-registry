@@ -370,7 +370,7 @@ declare function mlpm:extract-zip-text($input as document-node(), $part as xs:st
 declare function mlpm:extract-readme($input as document-node()) as document-node()?
 {
   for $part in xdmp:zip-manifest($input)/zip:part
-  where fn:matches($part, "^README(\.(md|mdown))?")
+  where fn:matches($part, "^README(\.(md|mdown))?", "i")
   return mlpm:extract-zip-text($input, $part)
 };
 
