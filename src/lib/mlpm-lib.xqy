@@ -591,8 +591,7 @@ declare function mlpm:maven-metadata($package as element(mlpm:package)) as eleme
 {
   let $group-id := "com.mlpm." || ($package/mlpm:author/fn:string(), "system")[1]
   let $artifact-id := $package/mlpm:name/fn:string()
-  (: TODO: fn:last() ? :)
-  let $version := $package/mlpm:versions/mlpm:version[1]/fn:string()
+  let $version := $package/mlpm:versions/mlpm:version[fn:last()]/fn:string()
   let $last-updated := fn:format-dateTime( xs:dateTime($package/mlpm:time/mlpm:modified), "[Y][M01][D01][H01][m][s][f]")
   return
     element metadata {
