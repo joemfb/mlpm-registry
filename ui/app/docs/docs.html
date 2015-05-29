@@ -1,46 +1,165 @@
 <div class="row detail">
 
-<h3>mlpm</h3>
+  <div class="col-md-3">
+    <pagemenu></pagemenu>
+  </div>
 
-<p>Install from <a href="https://www.npmjs.com/package/mlpm">npm</a>: <code>npm install -g mlpm</code></p>
+  <div class="col-md-9" pageitems selector="menuitem" topmargin="20">
+    <h1>mlpm</h1>
 
-<h4>usage</h4>
+    <p>
+      <em>a MarkLogic Package manager</em>
+    </p>
 
-<ul class="task-list">
-  <li>
-    <code>mlpm search $QUERY</code>: search for packages matching <code>$QUERY</code>
-  </li>
-  <li>
-    <code>mlpm info $NAME</code>: view metadata for package <code>$NAME</code>
-  </li>
-  <li>
-    <code>mlpm install $NAME</code>: install package <code>$NAME</code>
-  </li>
-  <li>
-    <code>mlpm uninstall $NAME</code>: uninstall package <code>$NAME</code>
-  </li>
-  <li>
-    <code>mlpm ls</code>: list installed packages</li>
-  <li>
-    <code>mlpm init</code>: create a new package</li>
-  <li>
-    <code>mlpm publish</code>: publish a package to the registry</li>
-  <li>
-    <code>mlpm unpublish</code>: remove a package from the registry</li>
-  <li>
-    <code>mlpm &lt;cmd&gt; -h</code>: command help</li>
-  <li>
-    <code>mlpm -h</code>: general help</li>
-</ul>
+    <h2 id="get-started" class="menuitem">get started</h2>
 
-<p>To publish/unpublish packages, login with your github account, then run <code>mlpm login</code> with your mlpm registry API token (available on your account page).</p>
+    <h3 id="install-mlpm" class="menuitem">install mlpm</h3>
+    <p>The <strong>mlpm</strong> client is a <a href="https://nodejs.org/">node.js</a> command-line app. Install it with npm (which is bundled with node.js):</p>
+    <pre>
+$ npm install -g mlpm</pre>
+    <p><em>It's package managers all the way down!</em></p>
 
-<h4>deployment</h4>
+    <h3 id="usage" class="menuitem">usage</h4>
 
-<p>To deploy with <a href="https://github.com/marklogic/roxy">Roxy</a>, use <a href="https://gist.github.com/joemfb/c786696f459290e57c73">this gist</a> as your <code>deploy/app_specific.rb</code>; it adds package deployment and undeployment to the following built-in commands: <code>./ml &lt;env&gt; deploy modules</code> and <code>./ml &lt;env&gt; clean modules</code>. Full integration with Roxy is being discussed <a href="https://github.com/marklogic/roxy/issues/357">here</a>.</p>
+    <ul class="task-list">
+      <li>
+        <code>mlpm search $QUERY</code>: search for packages matching <code>$QUERY</code>
+      </li>
+      <li>
+        <code>mlpm info $NAME</code>: view metadata for package <code>$NAME</code>
+      </li>
+      <li>
+        <code>mlpm install $NAME</code>: install package <code>$NAME</code>
+      </li>
+      <li>
+        <code>mlpm uninstall $NAME</code>: uninstall package <code>$NAME</code>
+      </li>
+      <li>
+        <code>mlpm ls</code>: list installed packages</li>
+      <li>
+        <code>mlpm init</code>: create a new package</li>
+      <li>
+        <code>mlpm publish</code>: publish a package to the registry</li>
+      <li>
+        <code>mlpm unpublish</code>: remove a package from the registry</li>
+      <li>
+        <code>mlpm &lt;cmd&gt; -h</code>: command help</li>
+      <li>
+        <code>mlpm -h</code>: general help</li>
+    </ul>
 
-<h4>maven / gradle</h4>
+    <h3 id="install-packages" class="menuitem">install packages</h3>
+    <p>Like npm, mlpm installs packages to the filesystem where it is run.</p>
+    <pre>
+$ mlpm install taskbot
+installed taskbot@1.0.0
 
-<p>This registry provides a maven / gradle repository of all packages at <a href="/maven">{{ model.origin }}/maven</a>.</p>
+$ mlpm ls
+└── taskbot@1.0.0
+
+$ ls mlpm_modules
+taskbot</pre>
+
+    <p>To deploy installed packages to MarkLogic, see <a href="#deploy-packages">deploy packages</a></p>
+
+    <hr />
+
+    <h2 id="configure-project" class="menuitem">configure project</h2>
+
+    <p>You can save project dependencies and other configuration in <code>mlpm.json</code>.</p>
+    <pre>
+$ mlpm init
+# interactive prompt to initialize mlpm.json
+
+$ mlpm install taskbot --save
+installed taskbot@1.0.0
+saved taskbot to mlpm.json
+
+$ cat mlpm.json
+{
+  ...
+  "dependencies": {
+    "taskbot": "1.0.*"
+  }
+}</pre>
+    <p><code>mlpm.json</code> properties</p>
+    <ul>
+      <li><code>name</code>: project name (<em>required</em>)</li>
+      <li><code>version</code>: <a href="http://semver.org/">semver-compatible</a> version number (<em>required</em>)</li>
+      <li><code>description</code>: short project description (<em>required</em>)</li>
+      <li><code>repository</code>: URL to project repository</li>
+      <li><code>private</code>: boolean; restricts project from being published to the registry</li>
+      <li><code>dependencies</code>: object; key-value pairs of dependency packages <code>{ "package-name": "semver-range" }</code>
+        <br />the following semver patterns are supported:
+        <ul>
+          <li><code>#.#.#</code>: <em>(specific version)</em></li>
+          <li><code>#.#.*</code> or <code>#.#.x</code>: <em>(any patch version)</em></li>
+          <li><code>#.*.*</code> or <code>#.x.x</code>: <em>(any minor version)</em></li>
+        </ul>
+      </li>
+    </ul>
+
+    <hr />
+
+    <h2 id="deploy-packages" class="menuitem">deploy packages</h2>
+
+    <h3 id="rest-deployment" class="menuitem">rest api</h3>
+    <p>mlpm is optimized for applications using the MarkLogic REST API.</p>
+    <pre>
+mlpm deploy -H localhost -P 8040 -u admin -p admin</pre>
+    <p>Note: if either `-u` or `-p` are omitted, an interactive prompt is created.</p>
+    <p>Some applications are developed across multiple environments, and the <a href="https://github.com/marklogic/roxy">Roxy deployer</a> has great multi-environment support. To integrate mlpm deployment with Roxy, add the following to <code>deploy/app_specific.rb</code> in your project:
+    <pre>
+def deploy_packages
+  system %Q!mlpm deploy -u #{ @properties['ml.user'] } \
+                        -p #{ @properties['ml.password'] } \
+                        -H #{ @properties['ml.server'] } \
+                        -P #{ @properties['ml.app-port'] }!
+end</pre>
+    <p>Now you can run</p>
+
+    <pre>
+./ml &lt;env&gt; deploy_packages</pre>
+
+    <h3 id="app-server" class="menuitem">standard app-server</h3>
+    <p>You can use mlpm packages without using the REST API, you just need to deploy the <code>mlpm_modules</code> directory to your modules database (or filesystem directory). It must be deployed to the <code>/ext/</code> directory (relative to the configured module root, usually "/").
+    <p>For instance, with Roxy applications:</p>
+    <ul>
+      <li>Copy <code>mlpm_modules</code> to <code>src/ext</code>, and deploy as usual.</li>
+      <li>Alternately, keep <code>mlpm.json</code> in <code>src/ext</code>, and run <code>mlpm install</code> from there.</li>
+    </ul>
+
+    <hr />
+
+    <h2 id="publish-packages" class="menuitem">publish packages</h2>
+
+    <p>To publish or unpublish packages, <a href="/auth/github">login with GitHub</a>, get your mlpm registry API token, and authenticate your mlpm client:</p>
+    <pre>
+$ mlpm login &lt;token&gt;
+authenticated &lt;username&gt;</pre>
+    <p>See what files would be included in your package:</p>
+    <pre>
+$ mlpm publish --dryrun</pre>
+    <p>Or generate the zip archive that would be published:</p>
+    <pre>
+$ mlpm publish --zip</pre>
+    <p>Finally, publish your package to the registry:</p>
+    <pre>
+$ mlpm publish</pre>
+    <p>If you need to remove a specific version of your package from the registy:</p>
+    <pre>
+$ mlpm unpublish &lt;package&gt;@&lt;version&gt;</pre>
+    <p>You can not re-publish a version that has been unpublished.</p>
+    <p>To unpublish your package entirely:</p>
+    <pre>
+$ mlpm unpublish &lt;package&gt; --force</pre>
+    <hr />
+
+    <h2 id="integration" class="menuitem">integration</h2>
+
+    <h3 id="maven-gradle" class="menuitem">maven / gradle</h3>
+
+    <p>This registry provides a maven / gradle repository of all packages at <a href="/maven">{{ model.origin }}/maven</a>.</p>
+  </div>
 
 </div>

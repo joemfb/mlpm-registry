@@ -6,6 +6,7 @@ angular.module('mlpm', [
   'ml.common',
   'ml.search',
   'ml.search.tpls',
+  'ngScrollSpy',
   'mlpm.user',
   'mlpm.search',
   'mlpm.package',

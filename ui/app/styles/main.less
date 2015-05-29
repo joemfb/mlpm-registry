@@ -27,6 +27,33 @@
   }
 }
 
+.home {
+  margin: 0 auto;
+  max-width: 800px;
+}
+
+.pagemenu {
+  position: fixed;
+
+  .active > a {
+    /*.bg-primary;
+    color: white;*/
+    text-decoration: underline;
+  }
+  .active > a:hover {
+    color: inherit;
+  }
+
+  menu {
+    margin-left: 20px;
+    margin-top: 0;
+  }
+}
+
+.pagemenu > li:not(.active) menu {
+  display:none;
+}
+
 .welcome {
   margin-top: 14px;
 }
