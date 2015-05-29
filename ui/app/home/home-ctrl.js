@@ -14,9 +14,10 @@
     MLRest.values('dependency', {
       options: 'all',
       structuredQuery: JSON.stringify({
-        search: { query: { 'collection-query': {
-          uri: 'http://mlpm.org/ns/collection/package'
-        } } }
+        search: { query: { 'and-query': [
+          { 'collection-query': { uri: 'http://mlpm.org/ns/collection/package' } },
+          { 'collection-query': { uri: 'http://mlpm.org/ns/collection/published' } }
+        ] } }
       })
     }).then(function(response) {
       model.commonDependencies = response.data['values-response']['distinct-value'];
