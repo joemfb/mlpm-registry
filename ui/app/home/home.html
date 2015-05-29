@@ -1,15 +1,32 @@
-<div class="row detail">
+<div class="row home">
   <div class="col-md-12">
-  <h2>mlpm</h2>
-  <p><em>a MarkLogic Package manager</em></p>
-  <p>install via npm:</p>
+    <h1>mlpm</h1>
+    <p>
+      <em>a MarkLogic Package manager</em>
+    </p>
+    <p><strong>mlpm</strong> is a package manager for <a href="https://developer.marklogic.com/">MarkLogic Server</a> modules: XQuery, JavaScript, SPARQL and XSLT. Designed to be familiar, it's command-line client is heavily modeled on <a href="https://npmjs.com">npm</a>, the package manager for node.js. Packages are hosted here: a custom, searchable registry, powered by MarkLogic Server.</p>
+    <p>Install <strong>mlpm</strong> with npm (which is bundled with <a href="https://nodejs.org/">node.js</a>):</p>
   </div>
-  <div class="col-md-3">
-    <pre>npm install -g mlpm</pre>
+  <div class="col-md-4">
+    <pre>
+$ npm install -g mlpm</pre>
   </div>
   <div class="col-md-12">
-  <p><a href="/search">browse or search packages</a></p>
-  <p>client source: <a href="https://github.com/joemfb/mlpm" target="self">https://github.com/joemfb/mlpm</a></p>
-  <p>registry source: <a href="https://github.com/joemfb/mlpm-registry" target="self">https://github.com/joemfb/mlpm-registry</a></p>
+    <p>See <a href="/docs#get-started">getting started</a> for more details, or <a href="/search">search for packages</a>!</p>
+
+    <div ng-if="model.commonDependencies">
+      <h4>frequently depended-on</h4>
+      <ul>
+        <li ng-repeat="dep in model.commonDependencies">
+          <a ng-href="/package/{{ dep._value }}">{{ dep._value }}</a>
+        </li>
+      </ul>
+    </div>
+
+    <p>
+      <small>client source: <a href="https://github.com/joemfb/mlpm" target="self">https://github.com/joemfb/mlpm</a></small>
+      <br />
+      <small>registry source: <a href="https://github.com/joemfb/mlpm-registry" target="self">https://github.com/joemfb/mlpm-registry</a></small>
+    </p>
   </div>
 </div>

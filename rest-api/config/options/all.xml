@@ -73,6 +73,14 @@
       <element ns="http://mlpm.org/ns" name="name"/>
     </range>
   </constraint>
+  <values name="dependency">
+    <range type="xs:string" facet="false">
+      <element ns="http://mlpm.org/ns" name="package-name"/>
+    </range>
+    <values-option>limit=10</values-option>
+    <values-option>frequency-order</values-option>
+    <values-option>item-frequency</values-option>
+  </values>
   <default-suggestion-source ref="name"/>
   <extract-metadata>
     <qname elem-ns="http://mlpm.org/ns" elem-name="name"/>
