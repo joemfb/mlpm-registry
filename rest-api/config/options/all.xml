@@ -73,6 +73,14 @@
       <element ns="http://mlpm.org/ns" name="name"/>
     </range>
   </constraint>
+  <constraint name="author">
+    <range type="xs:string" facet="true">
+      <element ns="http://mlpm.org/ns" name="author"/>
+    </range>
+    <facet-option>limit=10</facet-option>
+    <facet-option>frequency-order</facet-option>
+    <facet-option>descending</facet-option>
+  </constraint>
   <values name="dependency">
     <range type="xs:string" facet="false">
       <element ns="http://mlpm.org/ns" name="package-name"/>
@@ -83,6 +91,7 @@
   </values>
   <default-suggestion-source ref="name"/>
   <extract-metadata>
+    <qname elem-ns="http://mlpm.org/ns" elem-name="author"/>
     <qname elem-ns="http://mlpm.org/ns" elem-name="name"/>
     <qname elem-ns="http://mlpm.org/ns" elem-name="description"/>
   </extract-metadata>
