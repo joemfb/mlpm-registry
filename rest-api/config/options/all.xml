@@ -90,6 +90,10 @@
     <values-option>item-frequency</values-option>
   </values>
   <default-suggestion-source ref="name"/>
+  <suggestion-source ref="author">
+    <suggestion-option>frequency-order</suggestion-option>
+    <suggestion-option>descending</suggestion-option>
+  </suggestion-source>
   <extract-metadata>
     <qname elem-ns="http://mlpm.org/ns" elem-name="author"/>
     <qname elem-ns="http://mlpm.org/ns" elem-name="name"/>
